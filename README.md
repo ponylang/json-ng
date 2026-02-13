@@ -22,9 +22,9 @@ json-ng is a new library. We expect that the API will evolve over time.
 
 json-ng draws inspiration from several existing libraries:
 
-- [jay](https://github.com/patroclos/jay) — immutable JSON with lenses for Pony
-- [pony-immutable-json](https://github.com/mfelsche/pony-immutable-json) — immutable JSON with builders and JSONPath for Pony
-- [pony-jason](https://github.com/jemc/pony-jason) — streaming token parser for Pony
-- [json](https://github.com/ponylang/json) — the current ponylang JSON library
-- [serde_json](https://github.com/serde-rs/json) — Rust's widely-used JSON library
-- [SwiftyJSON](https://github.com/SwiftyJSON/SwiftyJSON) — ergonomic JSON navigation for Swift
+* [jay](https://github.com/patroclos/jay) — immutable JSON with lenses for Pony
+* [pony-immutable-json](https://github.com/mfelsche/pony-immutable-json) — immutable JSON with builders and JSONPath for Pony
+* [pony-jason](https://github.com/jemc/pony-jason) — streaming token parser for Pony
+* [json](https://github.com/ponylang/json) — the current ponylang JSON library
+* [serde_json](https://github.com/serde-rs/json) — Rust's widely-used JSON library
+* [SwiftyJSON](https://github.com/SwiftyJSON/SwiftyJSON) — ergonomic JSON navigation for Swift
