@@ -25,7 +25,6 @@ make clean              # clean build artifacts + corral cache
 
 **What's NOT implemented**:
 - JSONPath filter expressions `?()`, slice with step `[start:end:step]`, functions
-- CI workflows
 
 ## Architecture
 
