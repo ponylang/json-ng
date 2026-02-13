@@ -1,0 +1,94 @@
+class val JsonNav
+  """
+  Chained navigation wrapper for JSON values.
+
+  Wraps a JsonType and provides safe chained access where NotFound propagates
+  through the chain — no exceptions until you extract a typed terminal value.
+
+  ```pony
+  let nav = JsonNav(json)
+  try
+    let name = nav("user")("name").as_string()?
+    let age = nav("user")("age").as_i64()?
+  end
+  ```
+  """
+
+  let _value: (JsonType | NotFound)
+
+  new val create(value: JsonType) =>
+    """Wrap a JSON value for navigation."""
+    _value = value
+
+  new val _from(value: (JsonType | NotFound)) =>
+    """Internal: wrap a value that may already be NotFound."""
+    _value = value
+
+  fun apply(key_or_index: (String | USize)): JsonNav =>
+    """
+    Navigate into an object by key or array by index.
+
+    If the current value is NotFound, the wrong type, or the key/index
+    is missing, returns a NotFound-wrapping nav. NotFound propagates
+    through subsequent navigations.
+    """
+    match (_value, key_or_index)
+    | (let obj: JsonObject, let key: String) =>
+      try JsonNav._from(obj(key)?)
+      else JsonNav._from(NotFound)
+      end
+    | (let arr: JsonArray, let idx: USize) =>
+      try JsonNav._from(arr(idx)?)
+      else JsonNav._from(NotFound)
+      end
+    else
+      JsonNav._from(NotFound)
+    end
+
+  // --- Terminal extractors ---
+
+  fun as_string(): String ? =>
+    """Extract as String. Raises if not a string or NotFound."""
+    _value as String
+
+  fun as_i64(): I64 ? =>
+    """Extract as I64. Raises if not an integer or NotFound."""
+    _value as I64
+
+  fun as_f64(): F64 ? =>
+    """Extract as F64. Raises if not a float or NotFound."""
+    _value as F64
+
+  fun as_bool(): Bool ? =>
+    """Extract as Bool. Raises if not a boolean or NotFound."""
+    _value as Bool
+
+  fun as_null(): JsonNull ? =>
+    """Extract as JsonNull (JSON null). Raises if not null or NotFound."""
+    _value as JsonNull
+
+  fun as_object(): JsonObject ? =>
+    """Extract as JsonObject. Raises if not an object or NotFound."""
+    _value as JsonObject
+
+  fun as_array(): JsonArray ? =>
+    """Extract as JsonArray. Raises if not an array or NotFound."""
+    _value as JsonArray
+
+  // --- Inspection ---
+
+  fun json(): (JsonType | NotFound) =>
+    """Get the raw value for pattern matching."""
+    _value
+
+  fun found(): Bool =>
+    """Check whether navigation succeeded (value is not NotFound)."""
+    _value isnt NotFound
+
+  fun size(): USize ? =>
+    """Size of the wrapped collection. Raises if not an object or array."""
+    match _value
+    | let obj: JsonObject => obj.size()
+    | let arr: JsonArray => arr.size()
+    else error
+    end
