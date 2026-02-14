@@ -151,6 +151,7 @@ Supported JSONPath syntax:
 * `$[*]` or `$.*` — wildcard (all children)
 * `$..key` or `$..*` — recursive descent
 * `$[0:3]` — slice (start inclusive, end exclusive)
+* `$[::2]` or `$[::-1]` — slice with step (forward or reverse)
 * `$[0,2,4]` — union (multiple indices or names)
 * `query_one()` — convenience returning first match or `NotFound`
 
@@ -232,8 +233,8 @@ For most use cases, `JsonParser.parse()` is simpler and sufficient.
 
 ## Limitations
 
-JSONPath filter expressions (`?(...)`), slice with step
-(`[start:end:step]`), and function extensions are not supported.
+JSONPath filter expressions (`?(...)`) and function extensions are not
+supported.
 """
 
 use "collections/persistent"
