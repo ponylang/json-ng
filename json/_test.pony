@@ -25,6 +25,7 @@ actor \nodoc\ Main is TestList
     test(_TestJsonPathQueryAdvanced)
     test(_TestJsonPathQueryBasic)
     test(_TestJsonPathQueryComplex)
+    test(_TestJsonPathQuerySliceStep)
     test(_TestLensComposition)
     test(_TestLensGet)
     test(_TestLensRemove)
@@ -396,6 +397,11 @@ class \nodoc\ iso _JsonPathSafetyProperty is Property1[String]
         "$.a.b"
         "$.a[0]"
         "$[0,1]"
+        "$[0:2:1]"
+        "$[::2]"
+        "$[::-1]"
+        "$[::0]"
+        "$[1::-1]"
       ]
       for path_str in paths.values() do
         try
@@ -1090,6 +1096,11 @@ class \nodoc\ iso _TestJsonPathParse is UnitTest
       "$[1:]"
       "$[0,1,2]"
       "$.store.book[*].author"
+      "$[0:2:1]"
+      "$[::2]"
+      "$[::-1]"
+      "$[1:4:2]"
+      "$[::0]"
     ]
     for path_str in valid.values() do
       match JsonPathParser.parse(path_str)
@@ -1296,6 +1307,96 @@ class \nodoc\ iso _TestJsonPathQueryComplex is UnitTest
     | let j: JsonType => h.assert_eq[String]("A", j as String)
     else h.fail("Should find first book title")
     end
+
+class \nodoc\ iso _TestJsonPathQuerySliceStep is UnitTest
+  fun name(): String => "json/jsonpath/query/slice-step"
+
+  fun apply(h: TestHelper) ? =>
+    let arr = JsonArray
+      .push(I64(10))
+      .push(I64(20))
+      .push(I64(30))
+      .push(I64(40))
+      .push(I64(50))
+
+    // Positive step: every other element [0:5:2] -> [10, 30, 50]
+    let p1 = JsonPathParser.compile("$[0:5:2]")?
+    let r1 = p1.query(arr)
+    h.assert_eq[USize](3, r1.size())
+    h.assert_eq[I64](10, r1(0)? as I64)
+    h.assert_eq[I64](30, r1(1)? as I64)
+    h.assert_eq[I64](50, r1(2)? as I64)
+
+    // Step=1 explicit same as omitted [1:4:1] -> [20, 30, 40]
+    let p2 = JsonPathParser.compile("$[1:4:1]")?
+    let r2 = p2.query(arr)
+    h.assert_eq[USize](3, r2.size())
+    h.assert_eq[I64](20, r2(0)? as I64)
+
+    // Negative step: reverse [4:1:-1] -> [50, 40, 30]
+    let p3 = JsonPathParser.compile("$[4:1:-1]")?
+    let r3 = p3.query(arr)
+    h.assert_eq[USize](3, r3.size())
+    h.assert_eq[I64](50, r3(0)? as I64)
+    h.assert_eq[I64](40, r3(1)? as I64)
+    h.assert_eq[I64](30, r3(2)? as I64)
+
+    // Negative step with defaults: reverse entire array [::-1]
+    let p4 = JsonPathParser.compile("$[::-1]")?
+    let r4 = p4.query(arr)
+    h.assert_eq[USize](5, r4.size())
+    h.assert_eq[I64](50, r4(0)? as I64)
+    h.assert_eq[I64](10, r4(4)? as I64)
+
+    // Step=0 produces no results
+    let p5 = JsonPathParser.compile("$[::0]")?
+    let r5 = p5.query(arr)
+    h.assert_eq[USize](0, r5.size())
+
+    // Negative indices with step: [-4:-1:2] -> [20, 40]
+    let p6 = JsonPathParser.compile("$[-4:-1:2]")?
+    let r6 = p6.query(arr)
+    h.assert_eq[USize](2, r6.size())
+    h.assert_eq[I64](20, r6(0)? as I64)
+    h.assert_eq[I64](40, r6(1)? as I64)
+
+    // Step with open start/end: [::2] -> [10, 30, 50]
+    let p7 = JsonPathParser.compile("$[::2]")?
+    let r7 = p7.query(arr)
+    h.assert_eq[USize](3, r7.size())
+    h.assert_eq[I64](10, r7(0)? as I64)
+    h.assert_eq[I64](30, r7(1)? as I64)
+    h.assert_eq[I64](50, r7(2)? as I64)
+
+    // Negative step, open start/end: [::-2] -> [50, 30, 10]
+    let p8 = JsonPathParser.compile("$[::-2]")?
+    let r8 = p8.query(arr)
+    h.assert_eq[USize](3, r8.size())
+    h.assert_eq[I64](50, r8(0)? as I64)
+    h.assert_eq[I64](30, r8(1)? as I64)
+    h.assert_eq[I64](10, r8(2)? as I64)
+
+    // Wrong direction: positive step, start > end -> empty
+    let p9 = JsonPathParser.compile("$[3:1:1]")?
+    let r9 = p9.query(arr)
+    h.assert_eq[USize](0, r9.size())
+
+    // Wrong direction: negative step, start < end -> empty
+    let p10 = JsonPathParser.compile("$[1:3:-1]")?
+    let r10 = p10.query(arr)
+    h.assert_eq[USize](0, r10.size())
+
+    // Empty array
+    let empty = JsonArray
+    let p11 = JsonPathParser.compile("$[::2]")?
+    let r11 = p11.query(empty)
+    h.assert_eq[USize](0, r11.size())
+
+    // Slice on non-array produces empty result
+    let obj = JsonObject.update("a", I64(1))
+    let p12 = JsonPathParser.compile("$[::2]")?
+    let r12 = p12.query(obj)
+    h.assert_eq[USize](0, r12.size())
 
 // ===================================================================
 // Example Tests — Token Parser

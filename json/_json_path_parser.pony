@@ -117,7 +117,8 @@ class ref _JsonPathParser
     Parse an integer index or a slice expression.
 
     Disambiguation: if we see ':' after the optional first integer,
-    it's a slice; otherwise it's an index.
+    it's a slice; otherwise it's an index. A second ':' introduces
+    the optional step value.
     """
     let first: (I64 | None) = _try_parse_int()
 
@@ -126,7 +127,15 @@ class ref _JsonPathParser
       _advance(1)
       _skip_whitespace()
       let end_val: (I64 | None) = _try_parse_int()
-      _SliceSelector(first, end_val)
+      _skip_whitespace()
+      let step_val: (I64 | None) = if _looking_at(':') then
+        _advance(1)
+        _skip_whitespace()
+        _try_parse_int()
+      else
+        None
+      end
+      _SliceSelector(first, end_val, step_val)
     else
       match first
       | let n: I64 => _IndexSelector(n)

@@ -14,7 +14,7 @@ make clean              # clean build artifacts + corral cache
 
 ## Project Status
 
-**Current state**: All features compile and run. Comprehensive test suite with 11 property-based tests (PonyCheck) and 25 example-based tests.
+**Current state**: All features compile and run. Comprehensive test suite with 11 property-based tests (PonyCheck) and 26 example-based tests.
 
 **What's implemented**:
 - Immutable JSON value types (`JsonObject`, `JsonArray`, `JsonNull`) backed by persistent collections (CHAMP Map, HAMT Vec)
@@ -24,7 +24,7 @@ make clean              # clean build artifacts + corral cache
 - Example program demonstrating all features
 
 **What's NOT implemented**:
-- JSONPath filter expressions `?()`, slice with step `[start:end:step]`, functions
+- JSONPath filter expressions `?()`, functions
 
 ## Architecture
 
@@ -73,7 +73,7 @@ With `JsonNull`, Pony's `None` serves its natural role: "no result yet" in `_Tre
 
 | File | Contents |
 |------|----------|
-| `_test.pony` | Test suite (11 property + 25 example tests) |
+| `_test.pony` | Test suite (11 property + 26 example tests) |
 | `_tree_builder.pony` | Assembles token events into `JsonType` tree |
 | `_json_print.pony` | Serialization (compact + pretty) |
 | `_traversal.pony` | Lens traversal trait and implementations |
