@@ -8,7 +8,7 @@
     "license": "BSD-2-Clause",
     "documentation_url": "https://ponylang.github.io/json-ng/",
     "version": "0.1.0",
-    "name": "json"
+    "name": "json-ng"
   },
   "deps": [
     {}
