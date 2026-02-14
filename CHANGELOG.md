@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file. This projec
 
 ### Added
 
+- Add slice-with-step support to JSONPath ([PR #7](https://github.com/ponylang/json-ng/pull/7))
 
 ### Changed
 
