@@ -4,7 +4,7 @@ An immutable JSON library for [Pony](https://www.ponylang.io/).
 
 ## Status
 
-json-ng is a new library. We expect that the API will evolve over time.
+json-ng was created with the intent to get it included in the Pony standard library. We expect this repo will not be long for this world.
 
 ## Installation
 
