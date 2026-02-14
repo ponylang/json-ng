@@ -213,6 +213,22 @@ actor Main
         env.out.print("Slice [:2] titles: " + _format_results(titles))
       end
 
+      // Slice with step: every other book
+      try
+        let step_slice =
+          json.JsonPathParser.compile("$.store.book[::2].title")?
+        let titles = step_slice.query(doc)
+        env.out.print("Slice [::2] titles: " + _format_results(titles))
+      end
+
+      // Slice with negative step: books in reverse
+      try
+        let rev_slice =
+          json.JsonPathParser.compile("$.store.book[::-1].title")?
+        let titles = rev_slice.query(doc)
+        env.out.print("Slice [::-1] titles: " + _format_results(titles))
+      end
+
     | let err: json.JsonParseError =>
       env.out.print("JSON parse error: " + err.string())
     end

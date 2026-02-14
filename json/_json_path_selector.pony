@@ -54,33 +54,64 @@ primitive _WildcardSelector
 
 class val _SliceSelector
   """
-  Select a range of array elements.
+  Select a range of array elements with optional step.
 
-  Implements RFC 9535 slice semantics: [start:end] where start is
-  inclusive and end is exclusive. Missing start defaults to 0, missing
-  end defaults to array length. Negative values wrap from the end.
+  Implements RFC 9535 Section 2.3.4.2 slice semantics: [start:end:step]
+  where start is inclusive and end is exclusive. Missing start, end, and
+  step use defaults that depend on step direction. Negative values wrap
+  from the end. Step of 0 produces no results.
   """
   let _start: (I64 | None)
   let _end: (I64 | None)
+  let _step: (I64 | None)
 
-  new val create(start': (I64 | None), end': (I64 | None)) =>
+  new val create(
+    start': (I64 | None),
+    end': (I64 | None),
+    step': (I64 | None) = None)
+  =>
     _start = start'
     _end = end'
+    _step = step'
 
   fun select(node: JsonType, out: Array[JsonType] ref) =>
     match node
     | let arr: JsonArray =>
       let len = arr.size().i64()
-      let s = _normalize(
-        match _start | let n: I64 => n else I64(0) end, len)
-      let e = _normalize(
-        match _end | let n: I64 => n else len end, len)
-      let lower = s.max(0).min(len)
-      let upper = e.max(0).min(len)
-      var i = lower
-      while i < upper do
-        try out.push(arr(i.usize())?) end
-        i = i + 1
+      let step = match _step | let n: I64 => n else I64(1) end
+
+      if step == 0 then return end
+
+      let s = if step >= 0 then
+        match _start | let n: I64 => n else I64(0) end
+      else
+        match _start | let n: I64 => n else len - 1 end
+      end
+      let e = if step >= 0 then
+        match _end | let n: I64 => n else len end
+      else
+        match _end | let n: I64 => n else (-len) - 1 end
+      end
+
+      let n_start = _normalize(s, len)
+      let n_end = _normalize(e, len)
+
+      if step > 0 then
+        let lower = n_start.max(0).min(len)
+        let upper = n_end.max(0).min(len)
+        var i = lower
+        while i < upper do
+          try out.push(arr(i.usize())?) end
+          i = i + step
+        end
+      else
+        let upper = n_start.max(-1).min(len - 1)
+        let lower = n_end.max(-1).min(len - 1)
+        var i = upper
+        while lower < i do
+          try out.push(arr(i.usize())?) end
+          i = i + step
+        end
       end
     end
 
