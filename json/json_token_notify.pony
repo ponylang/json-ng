@@ -12,3 +12,8 @@ interface JsonTokenNotify
   """
 
   fun ref apply(parser: JsonTokenParser, token: JsonToken)
+    """
+    Called for each token parsed from the JSON document. Use `parser` to
+    access parsed values (`last_string`, `last_number`) and to call
+    `abort()` if parsing should stop early.
+    """
