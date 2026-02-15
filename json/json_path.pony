@@ -35,7 +35,7 @@ class val JsonPath
     Returns all matching values. Returns an empty array if no values
     match. Evaluation never errors.
     """
-    _JsonPathEval(root, _segments)
+    _JsonPathEval(root, root, _segments)
 
   fun query_one(root: JsonType): (JsonType | NotFound) =>
     """

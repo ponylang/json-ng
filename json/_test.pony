@@ -11,6 +11,7 @@ actor \nodoc\ Main is TestList
     test(Property1UnitTest[I64](_ArrayPushPopProperty))
     test(Property1UnitTest[USize](_ArraySizeProperty))
     test(Property1UnitTest[F64](_F64RoundtripProperty))
+    test(Property1UnitTest[String](_FilterSafetyProperty))
     test(Property1UnitTest[I64](_I64RoundtripProperty))
     test(Property1UnitTest[String](_JsonPathSafetyProperty))
     test(Property1UnitTest[String](_ObjectRemoveProperty))
@@ -20,6 +21,17 @@ actor \nodoc\ Main is TestList
     test(Property1UnitTest[String](_StringEscapeRoundtripProperty))
     // Example tests
     test(_TestArrayUpdate)
+    test(_TestJsonPathFilterAbsoluteQuery)
+    test(_TestJsonPathFilterComparison)
+    test(_TestJsonPathFilterDeepEquality)
+    test(_TestJsonPathFilterExistence)
+    test(_TestJsonPathFilterLogical)
+    test(_TestJsonPathFilterNested)
+    test(_TestJsonPathFilterNothing)
+    test(_TestJsonPathFilterNumbers)
+    test(_TestJsonPathFilterOnObjects)
+    test(_TestJsonPathFilterParse)
+    test(_TestJsonPathFilterTypes)
     test(_TestJsonPathParse)
     test(_TestJsonPathParseErrors)
     test(_TestJsonPathQueryAdvanced)
@@ -402,6 +414,9 @@ class \nodoc\ iso _JsonPathSafetyProperty is Property1[String]
         "$[::-1]"
         "$[::0]"
         "$[1::-1]"
+        "$[?@.a]"
+        "$[?@.a > 0]"
+        "$[?@.a == 1 && @.b == 2]"
       ]
       for path_str in paths.values() do
         try
@@ -1423,3 +1438,398 @@ class \nodoc\ iso _TestTokenParserAbort is UnitTest
       raised = true
     end
     h.assert_true(raised)
+
+// ===================================================================
+// Property Tests — JSONPath Filter Safety
+// ===================================================================
+
+class \nodoc\ iso _FilterSafetyProperty is Property1[String]
+  fun name(): String => "json/jsonpath/filter/safety"
+
+  fun gen(): Generator[String] =>
+    _JsonValueStringGen(2)
+
+  fun ref property(sample: String, ph: PropertyHelper) =>
+    match JsonParser.parse(sample)
+    | let doc: JsonType =>
+      let paths: Array[String] val = [
+        "$[?@.a]"
+        "$[?@.a == 1]"
+        "$[?@.a != null]"
+        "$[?@.a > 0]"
+        "$[?@.a < 100]"
+        "$[?@.a >= 0 && @.b <= 10]"
+        "$[?@.a == 1 || @.b == 2]"
+        "$[?!@.missing]"
+        "$[?@.a == $.b]"
+        """$[?@.name == "test"]"""
+        "$[?@.x == true]"
+        "$[?@.x == false]"
+        "$[?(@.a > 1)]"
+      ]
+      for path_str in paths.values() do
+        try
+          let path = JsonPathParser.compile(path_str)?
+          let results = path.query(doc)
+          ph.assert_true(results.size() >= 0)
+        else
+          ph.fail("Failed to compile: " + path_str)
+        end
+      end
+    | let _: JsonParseError => None
+    end
+
+// ===================================================================
+// Example Tests — JSONPath Filter Expressions
+// ===================================================================
+
+class \nodoc\ iso _TestJsonPathFilterParse is UnitTest
+  fun name(): String => "json/jsonpath/filter/parse"
+
+  fun apply(h: TestHelper) =>
+    // Valid filter expressions should parse
+    let valid: Array[String] val = [
+      "$[?@.a]"
+      "$[?@.a == 1]"
+      """$[?@.a != 'hello']"""
+      "$[?@.a > 1.5]"
+      "$[?@.a < 10]"
+      "$[?@.a <= 10]"
+      "$[?@.a >= 0]"
+      "$[?@.a == true]"
+      "$[?@.a == false]"
+      "$[?@.a == null]"
+      "$[?!@.a]"
+      "$[?@.a && @.b]"
+      "$[?@.a || @.b]"
+      "$[?(@.a)]"
+      "$[?@.a == $.b]"
+      "$[?@['key'] > 1]"
+      "$[?@[0] == 1]"
+      "$[?@.a > 1 && @.b < 10]"
+      "$[?@.a == 1 || @.b == 2]"
+      "$[?!(@.a && @.b)]"
+      "$[?@.a[0].b == 1]"
+      "$[?10 > @.price]"
+      """$[?"book" == @.type]"""
+    ]
+    for path_str in valid.values() do
+      match JsonPathParser.parse(path_str)
+      | let _: JsonPath => None // pass
+      | let e: JsonPathParseError =>
+        h.fail("Expected valid: " + path_str + " — " + e.string())
+      end
+    end
+
+    // Invalid filter expressions
+    let invalid: Array[String] val = [
+      "$[?]"          // empty filter
+      "$[?@[*] == 1]" // wildcard in comparison (not singular)
+      "$[?@..a == 1]" // descendant in comparison (not singular)
+    ]
+    for path_str in invalid.values() do
+      match JsonPathParser.parse(path_str)
+      | let _: JsonPathParseError => None // expected
+      | let _: JsonPath =>
+        h.fail("Expected error for: " + path_str)
+      end
+    end
+
+class \nodoc\ iso _TestJsonPathFilterExistence is UnitTest
+  fun name(): String => "json/jsonpath/filter/existence"
+
+  fun apply(h: TestHelper) ? =>
+    let doc = JsonObject
+      .update("items", JsonArray
+        .push(JsonObject.update("a", I64(1)))
+        .push(JsonObject.update("b", I64(2)))
+        .push(JsonObject
+          .update("a", I64(3))
+          .update("b", I64(4))))
+
+    // @.a exists
+    let p1 = JsonPathParser.compile("$.items[?@.a]")?
+    let r1 = p1.query(doc)
+    h.assert_eq[USize](2, r1.size())
+
+    // @.b exists
+    let p2 = JsonPathParser.compile("$.items[?@.b]")?
+    let r2 = p2.query(doc)
+    h.assert_eq[USize](2, r2.size())
+
+    // Negated existence: !@.a
+    let p3 = JsonPathParser.compile("$.items[?!@.a]")?
+    let r3 = p3.query(doc)
+    h.assert_eq[USize](1, r3.size())
+
+    // No items have key "c"
+    let p4 = JsonPathParser.compile("$.items[?@.c]")?
+    let r4 = p4.query(doc)
+    h.assert_eq[USize](0, r4.size())
+
+    // Existence with null values — null value still exists
+    let doc2 = JsonObject
+      .update("items", JsonArray
+        .push(JsonObject.update("a", JsonNull))
+        .push(JsonObject.update("b", I64(1))))
+    let p5 = JsonPathParser.compile("$.items[?@.a]")?
+    let r5 = p5.query(doc2)
+    h.assert_eq[USize](1, r5.size())
+
+class \nodoc\ iso _TestJsonPathFilterComparison is UnitTest
+  fun name(): String => "json/jsonpath/filter/comparison"
+
+  fun apply(h: TestHelper) ? =>
+    let doc = JsonObject
+      .update("store", JsonObject
+        .update("book", JsonArray
+          .push(JsonObject.update("title", "A").update("price", I64(8)))
+          .push(JsonObject.update("title", "B").update("price", I64(12)))
+          .push(JsonObject.update("title", "C").update("price", I64(5)))))
+
+    // Less than
+    let p1 = JsonPathParser.compile("$.store.book[?@.price < 10]")?
+    let r1 = p1.query(doc)
+    h.assert_eq[USize](2, r1.size())
+
+    // Equal
+    let p2 = JsonPathParser.compile("$.store.book[?@.price == 12]")?
+    let r2 = p2.query(doc)
+    h.assert_eq[USize](1, r2.size())
+
+    // Not equal
+    let p3 = JsonPathParser.compile("$.store.book[?@.price != 12]")?
+    let r3 = p3.query(doc)
+    h.assert_eq[USize](2, r3.size())
+
+    // Greater than or equal
+    let p4 = JsonPathParser.compile("$.store.book[?@.price >= 8]")?
+    let r4 = p4.query(doc)
+    h.assert_eq[USize](2, r4.size())
+
+    // Greater than
+    let p5 = JsonPathParser.compile("$.store.book[?@.price > 8]")?
+    let r5 = p5.query(doc)
+    h.assert_eq[USize](1, r5.size())
+
+    // Less than or equal
+    let p6 = JsonPathParser.compile("$.store.book[?@.price <= 5]")?
+    let r6 = p6.query(doc)
+    h.assert_eq[USize](1, r6.size())
+
+    // String comparison
+    let p7 = JsonPathParser.compile(
+      """$.store.book[?@.title == "A"]""")?
+    let r7 = p7.query(doc)
+    h.assert_eq[USize](1, r7.size())
+
+    // Literal on left side
+    let p8 = JsonPathParser.compile("$.store.book[?10 > @.price]")?
+    let r8 = p8.query(doc)
+    h.assert_eq[USize](2, r8.size())
+
+class \nodoc\ iso _TestJsonPathFilterLogical is UnitTest
+  fun name(): String => "json/jsonpath/filter/logical"
+
+  fun apply(h: TestHelper) ? =>
+    let doc = JsonArray
+      .push(JsonObject.update("a", I64(1)).update("b", I64(2)))
+      .push(JsonObject.update("a", I64(3)).update("b", I64(4)))
+      .push(JsonObject.update("a", I64(5)).update("b", I64(6)))
+
+    // AND
+    let p1 = JsonPathParser.compile("$[?@.a > 1 && @.b < 6]")?
+    let r1 = p1.query(doc)
+    h.assert_eq[USize](1, r1.size())
+
+    // OR
+    let p2 = JsonPathParser.compile("$[?@.a == 1 || @.a == 5]")?
+    let r2 = p2.query(doc)
+    h.assert_eq[USize](2, r2.size())
+
+    // NOT with parens
+    let p3 = JsonPathParser.compile("$[?!(@.a > 3)]")?
+    let r3 = p3.query(doc)
+    h.assert_eq[USize](2, r3.size())
+
+    // Precedence: && binds tighter than ||
+    // @.a == 1 || (@.b == 4 && @.a == 3) -> first and second
+    let doc2 = JsonArray
+      .push(JsonObject
+        .update("a", I64(1)).update("b", I64(2)).update("c", I64(3)))
+      .push(JsonObject
+        .update("a", I64(4)).update("b", I64(5)).update("c", I64(6)))
+      .push(JsonObject
+        .update("a", I64(7)).update("b", I64(8)).update("c", I64(9)))
+
+    let p4 = JsonPathParser.compile(
+      "$[?@.a == 1 || @.b == 5 && @.c == 6]")?
+    let r4 = p4.query(doc2)
+    // Parsed as: @.a == 1 || (@.b == 5 && @.c == 6)
+    h.assert_eq[USize](2, r4.size())
+
+    // Explicit parens override precedence
+    let p5 = JsonPathParser.compile(
+      "$[?(@.a == 1 || @.b == 5) && @.c == 6]")?
+    let r5 = p5.query(doc2)
+    // Only second matches (b==5, c==6)
+    h.assert_eq[USize](1, r5.size())
+
+class \nodoc\ iso _TestJsonPathFilterAbsoluteQuery is UnitTest
+  fun name(): String => "json/jsonpath/filter/absolute-query"
+
+  fun apply(h: TestHelper) ? =>
+    let doc = JsonObject
+      .update("default", "X")
+      .update("items", JsonArray
+        .push(JsonObject.update("type", "X").update("name", "a"))
+        .push(JsonObject.update("type", "Y").update("name", "b"))
+        .push(JsonObject.update("type", "X").update("name", "c")))
+
+    let p = JsonPathParser.compile("$.items[?@.type == $.default]")?
+    let r = p.query(doc)
+    h.assert_eq[USize](2, r.size())
+
+class \nodoc\ iso _TestJsonPathFilterNothing is UnitTest
+  fun name(): String => "json/jsonpath/filter/nothing"
+
+  fun apply(h: TestHelper) ? =>
+    let doc = JsonArray
+      .push(JsonObject.update("a", I64(1)))
+      .push(JsonObject.update("b", I64(2)))
+      .push(JsonObject.update("a", JsonNull))
+
+    // @.a == 1: only first (Nothing != 1, null != 1)
+    let p1 = JsonPathParser.compile("$[?@.a == 1]")?
+    let r1 = p1.query(doc)
+    h.assert_eq[USize](1, r1.size())
+
+    // @.a == null: only third (actual null, not Nothing)
+    let p2 = JsonPathParser.compile("$[?@.a == null]")?
+    let r2 = p2.query(doc)
+    h.assert_eq[USize](1, r2.size())
+
+    // @.a != 1: second (Nothing != 1 is true) and third (null != 1 is true)
+    let p3 = JsonPathParser.compile("$[?@.a != 1]")?
+    let r3 = p3.query(doc)
+    h.assert_eq[USize](2, r3.size())
+
+class \nodoc\ iso _TestJsonPathFilterTypes is UnitTest
+  fun name(): String => "json/jsonpath/filter/types"
+
+  fun apply(h: TestHelper) ? =>
+    let doc = JsonArray
+      .push(JsonObject.update("v", I64(1)))
+      .push(JsonObject.update("v", "1"))
+      .push(JsonObject.update("v", true))
+      .push(JsonObject.update("v", JsonNull))
+
+    // No type coercion: 1 != "1"
+    let p1 = JsonPathParser.compile("$[?@.v == 1]")?
+    let r1 = p1.query(doc)
+    h.assert_eq[USize](1, r1.size())
+
+    let p2 = JsonPathParser.compile("""$[?@.v == "1"]""")?
+    let r2 = p2.query(doc)
+    h.assert_eq[USize](1, r2.size())
+
+    let p3 = JsonPathParser.compile("$[?@.v == true]")?
+    let r3 = p3.query(doc)
+    h.assert_eq[USize](1, r3.size())
+
+    let p4 = JsonPathParser.compile("$[?@.v == null]")?
+    let r4 = p4.query(doc)
+    h.assert_eq[USize](1, r4.size())
+
+    // String "1" < 2 is false (cross-type)
+    let p5 = JsonPathParser.compile("$[?@.v < 2]")?
+    let r5 = p5.query(doc)
+    h.assert_eq[USize](1, r5.size())
+
+class \nodoc\ iso _TestJsonPathFilterDeepEquality is UnitTest
+  fun name(): String => "json/jsonpath/filter/deep-equality"
+
+  fun apply(h: TestHelper) ? =>
+    let doc = JsonObject
+      .update("target", JsonArray.push(I64(1)).push(I64(2)))
+      .update("items", JsonArray
+        .push(JsonObject
+          .update("v", JsonArray.push(I64(1)).push(I64(2))))
+        .push(JsonObject
+          .update("v", JsonArray.push(I64(1)).push(I64(3))))
+        .push(JsonObject
+          .update("v", JsonArray.push(I64(1)).push(I64(2)))))
+
+    let p = JsonPathParser.compile("$.items[?@.v == $.target]")?
+    let r = p.query(doc)
+    h.assert_eq[USize](2, r.size())
+
+class \nodoc\ iso _TestJsonPathFilterNumbers is UnitTest
+  fun name(): String => "json/jsonpath/filter/numbers"
+
+  fun apply(h: TestHelper) ? =>
+    let doc = JsonArray
+      .push(JsonObject.update("v", F64(1.5)))
+      .push(JsonObject.update("v", F64(2.5)))
+      .push(JsonObject.update("v", F64(3.0)))
+
+    // Float comparison
+    let p1 = JsonPathParser.compile("$[?@.v > 2.0]")?
+    let r1 = p1.query(doc)
+    h.assert_eq[USize](2, r1.size())
+
+    // Mixed I64/F64: I64(2) == F64(2.0)
+    let doc2 = JsonArray
+      .push(JsonObject.update("v", I64(2)))
+      .push(JsonObject.update("v", I64(3)))
+
+    let p2 = JsonPathParser.compile("$[?@.v == 2.0]")?
+    let r2 = p2.query(doc2)
+    h.assert_eq[USize](1, r2.size())
+
+    // Float literal in filter
+    let p3 = JsonPathParser.compile("$[?@.v == 3.0]")?
+    let r3 = p3.query(doc)
+    h.assert_eq[USize](1, r3.size())
+
+class \nodoc\ iso _TestJsonPathFilterOnObjects is UnitTest
+  fun name(): String => "json/jsonpath/filter/on-objects"
+
+  fun apply(h: TestHelper) ? =>
+    let doc = JsonObject
+      .update("data", JsonObject
+        .update("x", JsonObject.update("active", true))
+        .update("y", JsonObject.update("active", false))
+        .update("z", JsonObject.update("active", true)))
+
+    let p = JsonPathParser.compile("$.data[?@.active == true]")?
+    let r = p.query(doc)
+    h.assert_eq[USize](2, r.size())
+
+class \nodoc\ iso _TestJsonPathFilterNested is UnitTest
+  fun name(): String => "json/jsonpath/filter/nested"
+
+  fun apply(h: TestHelper) ? =>
+    // Nested filter: outer filter with inner bracket access
+    let doc = JsonArray
+      .push(JsonObject
+        .update("items", JsonArray.push(I64(1)).push(I64(5))))
+      .push(JsonObject
+        .update("items", JsonArray.push(I64(10)).push(I64(20))))
+
+    // Select elements where items[0] > 5
+    let p1 = JsonPathParser.compile("$[?@.items[0] > 5]")?
+    let r1 = p1.query(doc)
+    h.assert_eq[USize](1, r1.size())
+
+    // $ reference inside filter resolves to document root
+    let doc2 = JsonObject
+      .update("threshold", I64(3))
+      .update("items", JsonArray
+        .push(JsonObject.update("v", I64(1)))
+        .push(JsonObject.update("v", I64(5)))
+        .push(JsonObject.update("v", I64(3))))
+
+    let p2 = JsonPathParser.compile("$.items[?@.v > $.threshold]")?
+    let r2 = p2.query(doc2)
+    h.assert_eq[USize](1, r2.size())
