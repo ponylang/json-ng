@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file. This projec
 ### Added
 
 - Add slice-with-step support to JSONPath ([PR #7](https://github.com/ponylang/json-ng/pull/7))
+- Add filter expression support to JSONPath ([PR #9](https://github.com/ponylang/json-ng/pull/9))
 
 ### Changed
 
