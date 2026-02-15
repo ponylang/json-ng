@@ -14,7 +14,7 @@ make clean              # clean build artifacts + corral cache
 
 ## Project Status
 
-**Current state**: All features compile and run. Comprehensive test suite with 11 property-based tests (PonyCheck) and 26 example-based tests.
+**Current state**: All features compile and run. Comprehensive test suite with 12 property-based tests (PonyCheck) and 37 example-based tests.
 
 **What's implemented**:
 - Immutable JSON value types (`JsonObject`, `JsonArray`, `JsonNull`) backed by persistent collections (CHAMP Map, HAMT Vec)
@@ -24,7 +24,7 @@ make clean              # clean build artifacts + corral cache
 - Example program demonstrating all features
 
 **What's NOT implemented**:
-- JSONPath filter expressions `?()`, functions
+- JSONPath function extensions (`length()`, `count()`, `match()`, etc.)
 
 ## Architecture
 
@@ -73,14 +73,16 @@ With `JsonNull`, Pony's `None` serves its natural role: "no result yet" in `_Tre
 
 | File | Contents |
 |------|----------|
-| `_test.pony` | Test suite (11 property + 26 example tests) |
+| `_test.pony` | Test suite (12 property + 37 example tests) |
 | `_tree_builder.pony` | Assembles token events into `JsonType` tree |
 | `_json_print.pony` | Serialization (compact + pretty) |
 | `_traversal.pony` | Lens traversal trait and implementations |
 | `_json_path_parser.pony` | Recursive descent JSONPath parser |
-| `_json_path_selector.pony` | `_NameSelector`, `_IndexSelector`, `_WildcardSelector`, `_SliceSelector` |
+| `_json_path_selector.pony` | `_NameSelector`, `_IndexSelector`, `_WildcardSelector`, `_SliceSelector`, `_FilterSelector` |
 | `_json_path_segment.pony` | `_ChildSegment`, `_DescendantSegment` |
 | `_json_path_eval.pony` | JSONPath evaluation pipeline |
+| `_json_path_filter.pony` | Filter expression AST types |
+| `_json_path_filter_eval.pony` | Filter expression evaluator (`_FilterEval`, `_FilterCompare`) |
 
 ### Access Pattern Comparison
 

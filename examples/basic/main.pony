@@ -26,6 +26,10 @@ actor Main
 
     env.out.print("=== JSONPath Queries ===")
     _jsonpath_example(env)
+    env.out.print("")
+
+    env.out.print("=== JSONPath Filters ===")
+    _jsonpath_filter_example(env)
 
   fun _build_example(env: Env) =>
     let doc = json.JsonObject
@@ -227,6 +231,53 @@ actor Main
           json.JsonPathParser.compile("$.store.book[::-1].title")?
         let titles = rev_slice.query(doc)
         env.out.print("Slice [::-1] titles: " + _format_results(titles))
+      end
+
+    | let err: json.JsonParseError =>
+      env.out.print("JSON parse error: " + err.string())
+    end
+
+  fun _jsonpath_filter_example(env: Env) =>
+    let source =
+      """
+      {"store":{"book":[{"title":"Sayings","author":"Rees","price":8.95},{"title":"Sword","author":"Waugh","price":12.99},{"title":"Moby Dick","author":"Melville","price":8.99}],"bicycle":{"color":"red","price":399}}}
+      """
+
+    match json.JsonParser.parse(source)
+    | let doc: json.JsonType =>
+      // Comparison filter: books under $10
+      try
+        let cheap =
+          json.JsonPathParser.compile("$.store.book[?@.price < 10]")?
+        let results = cheap.query(doc)
+        env.out.print("Books under $10 (" + results.size().string() + "):")
+        for book in results.values() do
+          env.out.print("  " + book.string())
+        end
+      end
+
+      // Existence filter: books that have an author
+      try
+        let has_author =
+          json.JsonPathParser.compile("$.store.book[?@.author]")?
+        let results = has_author.query(doc)
+        env.out.print("Books with author: " + results.size().string())
+      end
+
+      // Logical combination: cheap books by specific author
+      try
+        let combined = json.JsonPathParser.compile(
+          "$.store.book[?@.price < 10 && @.author == 'Rees']")?
+        let results = combined.query(doc)
+        env.out.print("Cheap books by Rees: " + _format_results(results))
+      end
+
+      // String comparison
+      try
+        let alpha = json.JsonPathParser.compile(
+          "$.store.book[?@.author >= 'N'].title")?
+        let results = alpha.query(doc)
+        env.out.print("Authors >= 'N': " + _format_results(results))
       end
 
     | let err: json.JsonParseError =>

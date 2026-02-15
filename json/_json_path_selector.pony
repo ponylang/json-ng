@@ -3,6 +3,7 @@ type _Selector is
   | _IndexSelector
   | _WildcardSelector
   | _SliceSelector
+  | _FilterSelector
   )
 
 class val _NameSelector
@@ -117,3 +118,36 @@ class val _SliceSelector
 
   fun _normalize(idx: I64, len: I64): I64 =>
     if idx >= 0 then idx else len + idx end
+
+class val _FilterSelector
+  """
+  Select elements of an array or object that satisfy a filter expression.
+
+  For arrays, each element is tested against the expression; matching
+  elements are selected in order. For objects, each value is tested;
+  matching values are selected.
+
+  Unlike other selectors, `select` takes an additional `root` parameter
+  for resolving absolute queries (`$`) within filter expressions. This
+  difference is handled by explicit match dispatch in `_JsonPathEval._select_all`.
+  """
+  let _expr: _LogicalExpr
+
+  new val create(expr': _LogicalExpr) =>
+    _expr = expr'
+
+  fun select(node: JsonType, root: JsonType, out: Array[JsonType] ref) =>
+    match node
+    | let arr: JsonArray =>
+      for v in arr.values() do
+        if _FilterEval(_expr, v, root) then
+          out.push(v)
+        end
+      end
+    | let obj: JsonObject =>
+      for v in obj.values() do
+        if _FilterEval(_expr, v, root) then
+          out.push(v)
+        end
+      end
+    end
