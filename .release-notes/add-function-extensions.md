@@ -24,11 +24,11 @@ short_names.query(doc) // [{"name":"Bob",...}]
 
 // count(): nodelist cardinality
 let multi_tag = JsonPathParser.compile(
-  "$[?count(@.tags[*]) > 1]")?
+  "$.items[?count(@.tags[*]) > 1]")?
 
 // value(): extract single value from nodelist
 let first_tag = JsonPathParser.compile(
-  """$[?value(@.tags[0]) == "admin"]""")?
+  """$.items[?value(@.tags[0]) == "admin"]""")?
 ```
 
 Supported functions:
