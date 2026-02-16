@@ -12,6 +12,11 @@ actor \nodoc\ Main is TestList
     test(Property1UnitTest[USize](_ArraySizeProperty))
     test(Property1UnitTest[F64](_F64RoundtripProperty))
     test(Property1UnitTest[String](_FilterSafetyProperty))
+    test(Property1UnitTest[(String, String)](
+      _FunctionCountLengthEquivalenceProperty))
+    test(Property1UnitTest[(String, String)](
+      _FunctionMatchImpliesSearchProperty))
+    test(Property1UnitTest[(String, String)](_FunctionSafetyProperty))
     test(Property1UnitTest[I64](_I64RoundtripProperty))
     test(Property1UnitTest[(String, String)](_IRegexpIsMatchImpliesSearchProperty))
     test(Property1UnitTest[String](_IRegexpLiteralRoundtripProperty))
@@ -37,6 +42,11 @@ actor \nodoc\ Main is TestList
     test(_TestJsonPathFilterDeepEquality)
     test(_TestJsonPathFilterExistence)
     test(_TestJsonPathFilterLogical)
+    test(_TestJsonPathFilterFunctionCount)
+    test(_TestJsonPathFilterFunctionLength)
+    test(_TestJsonPathFilterFunctionMatchSearch)
+    test(_TestJsonPathFilterFunctionParse)
+    test(_TestJsonPathFilterFunctionValue)
     test(_TestJsonPathFilterNested)
     test(_TestJsonPathFilterNothing)
     test(_TestJsonPathFilterNumbers)
@@ -428,6 +438,9 @@ class \nodoc\ iso _JsonPathSafetyProperty is Property1[String]
         "$[?@.a]"
         "$[?@.a > 0]"
         "$[?@.a == 1 && @.b == 2]"
+        "$[?length(@.a) > 0]"
+        """$[?match(@.a, "[a-z]")]"""
+        """$[?search(@.a, "test")]"""
       ]
       for path_str in paths.values() do
         try
@@ -1477,6 +1490,12 @@ class \nodoc\ iso _FilterSafetyProperty is Property1[String]
         "$[?@.x == true]"
         "$[?@.x == false]"
         "$[?(@.a > 1)]"
+        "$[?length(@.a) > 0]"
+        "$[?count(@.*) > 0]"
+        """$[?match(@.a, "[a-z]")]"""
+        """$[?search(@.a, "test")]"""
+        "$[?value(@.a) == 1]"
+        """$[?!match(@.a, "x")]"""
       ]
       for path_str in paths.values() do
         try
@@ -1485,6 +1504,170 @@ class \nodoc\ iso _FilterSafetyProperty is Property1[String]
           ph.assert_true(results.size() >= 0)
         else
           ph.fail("Failed to compile: " + path_str)
+        end
+      end
+    | let _: JsonParseError => None
+    end
+
+// ===================================================================
+// Property Tests — JSONPath Function Extensions
+// ===================================================================
+
+primitive \nodoc\ _SafeIRegexpGen
+  """
+  Generates valid I-Regexp patterns that are safe to embed in JSONPath
+  single-quoted strings. Avoids backslash escapes (\p, \n, etc.) since
+  the JSONPath string parser interprets backslashes before the I-Regexp
+  parser sees them.
+  """
+  fun apply(max_depth: USize = 2): Generator[String] =>
+    let that = this
+    Generator[String](
+      object is GenObj[String]
+        fun generate(rnd: Randomness): String =>
+          that._gen(rnd, max_depth)
+      end)
+
+  fun _gen(rnd: Randomness, depth: USize): String =>
+    if depth == 0 then return _gen_atom(rnd) end
+    match rnd.usize(0, 5)
+    | 0 => _gen_atom(rnd)
+    | 1 => _gen(rnd, depth - 1) + "|" + _gen(rnd, depth - 1)
+    | 2 => _gen_atom(rnd) + _gen_atom(rnd)
+    | 3 => "(" + _gen(rnd, depth - 1) + ")" + _gen_quant(rnd)
+    | 4 => _gen_atom(rnd) + _gen_quant(rnd)
+    | 5 => _gen(rnd, depth - 1) + _gen_atom(rnd)
+    else _gen_atom(rnd)
+    end
+
+  fun _gen_atom(rnd: Randomness): String =>
+    match rnd.usize(0, 3)
+    | 0 => String.from_array([rnd.u8('a', 'z')])
+    | 1 => "."
+    | 2 => "[a-z]"
+    | 3 => "[0-9]"
+    else "a"
+    end
+
+  fun _gen_quant(rnd: Randomness): String =>
+    match rnd.usize(0, 3)
+    | 0 => ""
+    | 1 => "*"
+    | 2 => "+"
+    | 3 => "?"
+    else ""
+    end
+
+class \nodoc\ iso _FunctionMatchImpliesSearchProperty
+  is Property1[(String, String)]
+  """
+  If match(@.v, pattern) selects a node, search(@.v, pattern) must also
+  select it. Full-string match is a special case of substring search.
+  """
+  fun name(): String => "json/jsonpath/filter/function/match-implies-search"
+
+  fun gen(): Generator[(String, String)] =>
+    Generators.zip2[String, String](
+      _JsonValueStringGen(2),
+      _SafeIRegexpGen(1))
+
+  fun ref property(sample: (String, String), ph: PropertyHelper) =>
+    (let json_str, let pattern) = sample
+    match JsonParser.parse(json_str)
+    | let doc: JsonType =>
+      let match_path: String val = "$[?match(@.v, '" + pattern + "')]"
+      let search_path: String val = "$[?search(@.v, '" + pattern + "')]"
+      match (JsonPathParser.parse(match_path),
+        JsonPathParser.parse(search_path))
+      | (let mp: JsonPath, let sp: JsonPath) =>
+        let match_results = mp.query(doc)
+        let search_results = sp.query(doc)
+        // Every match result must also be a search result
+        ph.assert_true(match_results.size() <= search_results.size(),
+          "match returned " + match_results.size().string()
+          + " but search returned " + search_results.size().string()
+          + " for pattern '" + pattern + "'")
+      end
+    | let _: JsonParseError => None
+    end
+
+class \nodoc\ iso _FunctionCountLengthEquivalenceProperty
+  is Property1[(String, String)]
+  """
+  For array values, count(@[*]) must equal length(@). These are two
+  independent code paths that should agree on array cardinality.
+
+  Generates two JSON values, wraps each in an array so the "v" field
+  is always an array, then asserts count(@.v[*]) == length(@.v) for
+  both elements.
+  """
+  fun name(): String =>
+    "json/jsonpath/filter/function/count-length-equivalence"
+
+  fun gen(): Generator[(String, String)] =>
+    Generators.zip2[String, String](
+      _JsonValueStringGen(2),
+      _JsonValueStringGen(2))
+
+  fun ref property(sample: (String, String), ph: PropertyHelper) =>
+    (let json1, let json2) = sample
+    // Wrap each value inside an array so @.v is always an array.
+    // This ensures count(@.v[*]) and length(@.v) both return integers
+    // and must agree.
+    let wrapped: String val =
+      "[{\"v\":[" + json1 + "]},{\"v\":[" + json2 + "]}]"
+    match JsonParser.parse(wrapped)
+    | let doc: JsonType =>
+      match JsonPathParser.parse("$[?count(@.v[*]) == length(@.v)]")
+      | let eq_p: JsonPath =>
+        let eq_results = eq_p.query(doc)
+        // Both elements have array "v", so count and length must agree
+        // for both → eq should return 2 results
+        ph.assert_eq[USize](2, eq_results.size(),
+          "count(@.v[*]) should equal length(@.v) for arrays")
+      end
+    | let _: JsonParseError => None
+    end
+
+class \nodoc\ iso _FunctionSafetyProperty
+  is Property1[(String, String)]
+  """
+  Function extension paths with generated I-Regexp patterns must never
+  crash, regardless of the JSON document or pattern content.
+  """
+  fun name(): String => "json/jsonpath/filter/function/safety"
+
+  fun gen(): Generator[(String, String)] =>
+    Generators.zip2[String, String](
+      _JsonValueStringGen(2),
+      _SafeIRegexpGen(1))
+
+  fun ref property(sample: (String, String), ph: PropertyHelper) =>
+    (let json_str, let pattern) = sample
+    match JsonParser.parse(json_str)
+    | let doc: JsonType =>
+      let match_path: String val = "$[?match(@.v, '" + pattern + "')]"
+      let search_path: String val = "$[?search(@.v, '" + pattern + "')]"
+      let not_match: String val = "$[?!match(@.v, '" + pattern + "')]"
+      let not_search: String val = "$[?!search(@.v, '" + pattern + "')]"
+      let paths: Array[String val] val = [
+        match_path
+        search_path
+        not_match
+        not_search
+        "$[?length(@.v) > 0]"
+        "$[?count(@.*) >= 0]"
+        "$[?value(@.v) == 1]"
+        "$[?length(value(@.v)) > 0]"
+        "$[?count(@.v[*]) == length(@.v)]"
+      ]
+      for path_str in paths.values() do
+        match JsonPathParser.parse(path_str)
+        | let path: JsonPath =>
+          let results = path.query(doc)
+          ph.assert_true(results.size() >= 0)
+        | let e: JsonPathParseError =>
+          ph.fail("Failed to compile: " + path_str + " — " + e.string())
         end
       end
     | let _: JsonParseError => None
@@ -1844,6 +2027,284 @@ class \nodoc\ iso _TestJsonPathFilterNested is UnitTest
     let p2 = JsonPathParser.compile("$.items[?@.v > $.threshold]")?
     let r2 = p2.query(doc2)
     h.assert_eq[USize](1, r2.size())
+
+// ===================================================================
+// Example Tests — JSONPath Function Extension Parse
+// ===================================================================
+
+class \nodoc\ iso _TestJsonPathFilterFunctionParse is UnitTest
+  fun name(): String => "json/jsonpath/filter/function/parse"
+
+  fun apply(h: TestHelper) =>
+    // Valid function expressions
+    let valid: Array[String] val = [
+      """$[?match(@.b, "[jk]")]"""
+      """$[?search(@.b, "[jk]")]"""
+      "$[?length(@.a) > 3]"
+      "$[?count(@.items[*]) > 0]"
+      "$[?value(@.items[0]) == 1]"
+      """$[?!match(@.b, "[jk]")]"""
+      """$[?!search(@.b, "x")]"""
+      "$[?length(value(@.items)) > 0]"
+      """$[?length(@.a) >= 3 && match(@.b, "x")]"""
+      "$[?3 < length(@.a)]"
+      "$[?count(@[*]) == length(@)]"
+    ]
+    for path_str in valid.values() do
+      match JsonPathParser.parse(path_str)
+      | let _: JsonPath => None
+      | let e: JsonPathParseError =>
+        h.fail("Expected valid: " + path_str + " — " + e.string())
+      end
+    end
+
+    // Invalid function expressions
+    let invalid: Array[(String, String)] val = [
+      // Missing second argument for match
+      ("""$[?match(@.b)]""", "missing arg")
+      // Unknown function name
+      ("$[?unknown(@.b)]", "unknown func")
+      // ValueType function as standalone test-expr (no comparison)
+      ("$[?length(@.a)]", "length as test")
+      // Negating a ValueType function
+      ("$[?!length(@.a)]", "negate length")
+      // LogicalType function in comparison
+      ("""$[?match(@.a, "x") == true]""", "match in comparison")
+    ]
+    for (path_str, label) in invalid.values() do
+      match JsonPathParser.parse(path_str)
+      | let _: JsonPathParseError => None
+      | let _: JsonPath =>
+        h.fail("Expected error for (" + label + "): " + path_str)
+      end
+    end
+
+// ===================================================================
+// Example Tests — JSONPath Function Extension match/search
+// ===================================================================
+
+class \nodoc\ iso _TestJsonPathFilterFunctionMatchSearch is UnitTest
+  fun name(): String => "json/jsonpath/filter/function/match-search"
+
+  fun apply(h: TestHelper) ? =>
+    // RFC 9535 Section 2.4.6/2.4.7 example
+    let doc = JsonObject
+      .update("a", JsonArray
+        .push(I64(3))
+        .push(I64(5))
+        .push(I64(1))
+        .push(I64(2))
+        .push(I64(4))
+        .push(I64(6))
+        .push(JsonObject.update("b", "j"))
+        .push(JsonObject.update("b", "k"))
+        .push(JsonObject.update("b", JsonObject))
+        .push(JsonObject.update("b", "kilo")))
+
+    // match: full-string only — "j" and "k" match [jk], "kilo" does not
+    let p1 = JsonPathParser.compile("""$.a[?match(@.b, "[jk]")]""")?
+    let r1 = p1.query(doc)
+    h.assert_eq[USize](2, r1.size())
+
+    // search: substring — "j", "k", and "kilo" all contain [jk]
+    let p2 = JsonPathParser.compile("""$.a[?search(@.b, "[jk]")]""")?
+    let r2 = p2.query(doc)
+    h.assert_eq[USize](3, r2.size())
+
+    // Negated match
+    let doc2 = JsonArray
+      .push(JsonObject.update("name", "alice"))
+      .push(JsonObject.update("name", "bob"))
+      .push(JsonObject.update("name", "carol"))
+    let p3 = JsonPathParser.compile("""$[?!match(@.name, "b.*")]""")?
+    let r3 = p3.query(doc2)
+    h.assert_eq[USize](2, r3.size())
+
+    // Non-string args → false (numbers don't match)
+    let doc3 = JsonArray
+      .push(JsonObject.update("v", I64(42)))
+      .push(JsonObject.update("v", "hello"))
+    let p4 = JsonPathParser.compile("""$[?match(@.v, ".*")]""")?
+    let r4 = p4.query(doc3)
+    // Only "hello" matches — I64(42) is not a string
+    h.assert_eq[USize](1, r4.size())
+
+    // Invalid regex pattern → false (not crash)
+    let doc4 = JsonArray
+      .push(JsonObject.update("v", "test"))
+    let p5 = JsonPathParser.compile("""$[?match(@.v, "[invalid")]""")?
+    let r5 = p5.query(doc4)
+    h.assert_eq[USize](0, r5.size())
+
+    // match vs search: "abc" matches "abc" fully, "xabcx" does not
+    let doc5 = JsonArray
+      .push(JsonObject.update("v", "abc"))
+      .push(JsonObject.update("v", "xabcx"))
+    let p6 = JsonPathParser.compile("""$[?match(@.v, "abc")]""")?
+    let r6 = p6.query(doc5)
+    h.assert_eq[USize](1, r6.size()) // only exact "abc"
+
+    let p7 = JsonPathParser.compile("""$[?search(@.v, "abc")]""")?
+    let r7 = p7.query(doc5)
+    h.assert_eq[USize](2, r7.size()) // both contain "abc"
+
+// ===================================================================
+// Example Tests — JSONPath Function Extension length
+// ===================================================================
+
+class \nodoc\ iso _TestJsonPathFilterFunctionLength is UnitTest
+  fun name(): String => "json/jsonpath/filter/function/length"
+
+  fun apply(h: TestHelper) ? =>
+    // String length — ASCII
+    let doc1 = JsonArray
+      .push(JsonObject.update("name", "Al"))
+      .push(JsonObject.update("name", "Bob"))
+      .push(JsonObject.update("name", "Carol"))
+    let p1 = JsonPathParser.compile("$[?length(@.name) <= 3]")?
+    let r1 = p1.query(doc1)
+    h.assert_eq[USize](2, r1.size()) // "Al" (2) and "Bob" (3)
+
+    // String length — Unicode multi-byte: "café" has 4 codepoints not 5 bytes
+    let cafe: String val = recover val
+      String.>append("caf").>push(0xC3).>push(0xA9)
+    end
+    let doc2 = JsonArray
+      .push(JsonObject.update("s", cafe))
+      .push(JsonObject.update("s", "hello"))
+    let p2 = JsonPathParser.compile("$[?length(@.s) == 4]")?
+    let r2 = p2.query(doc2)
+    h.assert_eq[USize](1, r2.size()) // only "café"
+
+    // Array size
+    let doc3 = JsonArray
+      .push(JsonObject.update("items", JsonArray.push(I64(1)).push(I64(2))))
+      .push(JsonObject.update("items", JsonArray.push(I64(1))))
+    let p3 = JsonPathParser.compile("$[?length(@.items) > 1]")?
+    let r3 = p3.query(doc3)
+    h.assert_eq[USize](1, r3.size())
+
+    // Object member count
+    let doc4 = JsonArray
+      .push(JsonObject.update("obj",
+        JsonObject.update("a", I64(1)).update("b", I64(2)).update("c", I64(3))))
+      .push(JsonObject.update("obj",
+        JsonObject.update("x", I64(1))))
+    let p4 = JsonPathParser.compile("$[?length(@.obj) >= 3]")?
+    let r4 = p4.query(doc4)
+    h.assert_eq[USize](1, r4.size())
+
+    // length on number/bool/null/Nothing → Nothing, comparison fails → 0 matches
+    let doc5 = JsonArray
+      .push(JsonObject.update("v", I64(42)))
+      .push(JsonObject.update("v", true))
+      .push(JsonObject.update("v", JsonNull))
+      .push(JsonObject) // missing "v" → Nothing
+    let p5 = JsonPathParser.compile("$[?length(@.v) > 0]")?
+    let r5 = p5.query(doc5)
+    h.assert_eq[USize](0, r5.size())
+
+    // Nested: length(value(@.items))
+    let doc6 = JsonObject
+      .update("items", JsonArray
+        .push(JsonObject.update("x", "abc"))
+        .push(JsonObject.update("x", "abcde")))
+    let p6 = JsonPathParser.compile("$.items[?length(value(@.x)) > 3]")?
+    let r6 = p6.query(doc6)
+    h.assert_eq[USize](1, r6.size()) // only "abcde" (length 5)
+
+// ===================================================================
+// Example Tests — JSONPath Function Extension count
+// ===================================================================
+
+class \nodoc\ iso _TestJsonPathFilterFunctionCount is UnitTest
+  fun name(): String => "json/jsonpath/filter/function/count"
+
+  fun apply(h: TestHelper) ? =>
+    let doc = JsonArray
+      .push(JsonObject
+        .update("items", JsonArray.push(I64(1)).push(I64(2)).push(I64(3))))
+      .push(JsonObject
+        .update("items", JsonArray.push(I64(1))))
+      .push(JsonObject
+        .update("items", JsonArray))
+
+    // count(@.items[*]) counts array elements
+    let p1 = JsonPathParser.compile("$[?count(@.items[*]) > 1]")?
+    let r1 = p1.query(doc)
+    h.assert_eq[USize](1, r1.size()) // only first (3 items)
+
+    // count(@.items[*]) == 0 for empty array
+    let p2 = JsonPathParser.compile("$[?count(@.items[*]) == 0]")?
+    let r2 = p2.query(doc)
+    h.assert_eq[USize](1, r2.size()) // third element
+
+    // count on object members via wildcard
+    let doc2 = JsonArray
+      .push(JsonObject.update("data",
+        JsonObject.update("a", I64(1)).update("b", I64(2))))
+      .push(JsonObject.update("data",
+        JsonObject.update("x", I64(1))))
+    let p3 = JsonPathParser.compile("$[?count(@.data.*) > 1]")?
+    let r3 = p3.query(doc2)
+    h.assert_eq[USize](1, r3.size())
+
+    // count on non-container via wildcard → 0
+    let doc3 = JsonArray
+      .push(JsonObject.update("v", I64(42)))
+    let p4 = JsonPathParser.compile("$[?count(@.v.*) > 0]")?
+    let r4 = p4.query(doc3)
+    h.assert_eq[USize](0, r4.size())
+
+// ===================================================================
+// Example Tests — JSONPath Function Extension value
+// ===================================================================
+
+class \nodoc\ iso _TestJsonPathFilterFunctionValue is UnitTest
+  fun name(): String => "json/jsonpath/filter/function/value"
+
+  fun apply(h: TestHelper) ? =>
+    let doc = JsonArray
+      .push(JsonObject
+        .update("items", JsonArray.push(I64(10)).push(I64(20))))
+      .push(JsonObject
+        .update("items", JsonArray.push(I64(5))))
+      .push(JsonObject
+        .update("items", JsonArray))
+
+    // value(@.items[0]) extracts single element
+    let p1 = JsonPathParser.compile("$[?value(@.items[0]) > 7]")?
+    let r1 = p1.query(doc)
+    h.assert_eq[USize](1, r1.size()) // only first (10 > 7)
+
+    // value on empty query → Nothing → comparison fails
+    let p2 = JsonPathParser.compile("$[?value(@.missing) == 1]")?
+    let r2 = p2.query(doc)
+    h.assert_eq[USize](0, r2.size())
+
+    // value on multi-element wildcard → Nothing
+    let p3 = JsonPathParser.compile("$[?value(@.items[*]) == 5]")?
+    let r3 = p3.query(doc)
+    // First has 2 items (Nothing), second has 1 item (5), third has 0 (Nothing)
+    h.assert_eq[USize](1, r3.size()) // only second
+
+    // value must return Nothing for multi-element result, even if first matches
+    let doc_multi = JsonArray
+      .push(JsonObject
+        .update("items", JsonArray.push(I64(5)).push(I64(99))))
+    let p_multi = JsonPathParser.compile("$[?value(@.items[*]) == 5]")?
+    let r_multi = p_multi.query(doc_multi)
+    // 2 items → value returns Nothing, not 5
+    h.assert_eq[USize](0, r_multi.size())
+
+    // value used with string comparison
+    let doc2 = JsonArray
+      .push(JsonObject.update("tags", JsonArray.push("urgent")))
+      .push(JsonObject.update("tags", JsonArray.push("low")))
+    let p4 = JsonPathParser.compile(
+      """$[?value(@.tags[0]) == "urgent"]""")?
+    let r4 = p4.query(doc2)
+    h.assert_eq[USize](1, r4.size())
 
 // ===================================================================
 // Generator — I-Regexp

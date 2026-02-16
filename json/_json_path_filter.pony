@@ -65,12 +65,13 @@ class val _AbsSingularQuery
 type _SingularQuery is (_RelSingularQuery | _AbsSingularQuery)
 
 // --- Comparables (what can appear on either side of a comparison) ---
-// Expands to: String | I64 | F64 | Bool | JsonNull |
-//             _RelSingularQuery | _AbsSingularQuery
+// Includes literal values, singular queries, and ValueType-returning
+// function expressions (length, count, value).
 
 type _LiteralValue is (String | I64 | F64 | Bool | JsonNull)
 
-type _Comparable is (_LiteralValue | _SingularQuery)
+type _Comparable is
+  (_LiteralValue | _SingularQuery | _LengthExpr | _CountExpr | _ValueExpr)
 
 // --- Filter queries (used in existence tests, can be non-singular) ---
 
@@ -121,10 +122,10 @@ class val _ComparisonExpr
   """
   Comparison between two comparables.
 
-  Both sides are either literal values or singular queries (which produce
-  at most one node). Non-singular queries are not allowed in comparisons
-  per RFC 9535 — that constraint is enforced at the type level by using
-  `_Comparable` rather than `_FilterQuery`.
+  Both sides are `_Comparable` values: literals, singular queries,
+  or ValueType function expressions (`length`, `count`, `value`).
+  Non-singular queries are not allowed directly in comparisons
+  per RFC 9535 — that constraint is enforced at the type level.
   """
   let left: _Comparable
   let op: _ComparisonOp
@@ -151,10 +152,81 @@ class val _ExistenceExpr
   new val create(query': _FilterQuery) =>
     query = query'
 
+// --- Function extension AST (RFC 9535 Section 2.4) ---
+
+class val _MatchExpr
+  """
+  Full-string I-Regexp match (RFC 9535 Section 2.4.6).
+
+  Returns LogicalType: true if the entire input string matches the
+  pattern. Returns false if either argument is not a string or if the
+  pattern is not a valid I-Regexp.
+  """
+  let input: _Comparable
+  let pattern: _Comparable
+
+  new val create(input': _Comparable, pattern': _Comparable) =>
+    input = input'
+    pattern = pattern'
+
+class val _SearchExpr
+  """
+  Substring I-Regexp search (RFC 9535 Section 2.4.7).
+
+  Returns LogicalType: true if any substring of the input matches the
+  pattern. Returns false if either argument is not a string or if the
+  pattern is not a valid I-Regexp.
+  """
+  let input: _Comparable
+  let pattern: _Comparable
+
+  new val create(input': _Comparable, pattern': _Comparable) =>
+    input = input'
+    pattern = pattern'
+
+class val _LengthExpr
+  """
+  Length of a value (RFC 9535 Section 2.4.4).
+
+  Returns ValueType: for strings, the number of Unicode scalar values;
+  for arrays, the number of elements; for objects, the number of members.
+  Returns Nothing for all other types.
+  """
+  let arg: _Comparable
+
+  new val create(arg': _Comparable) =>
+    arg = arg'
+
+class val _CountExpr
+  """
+  Count of nodes in a nodelist (RFC 9535 Section 2.4.5).
+
+  Returns ValueType: the number of nodes selected by the query.
+  Always returns a non-negative integer.
+  """
+  let query: _FilterQuery
+
+  new val create(query': _FilterQuery) =>
+    query = query'
+
+class val _ValueExpr
+  """
+  Extract a single value from a nodelist (RFC 9535 Section 2.4.8).
+
+  Returns ValueType: the value if the nodelist contains exactly one node,
+  Nothing otherwise (empty or multiple nodes).
+  """
+  let query: _FilterQuery
+
+  new val create(query': _FilterQuery) =>
+    query = query'
+
 type _LogicalExpr is
   ( _OrExpr
   | _AndExpr
   | _NotExpr
   | _ComparisonExpr
   | _ExistenceExpr
+  | _MatchExpr
+  | _SearchExpr
   )

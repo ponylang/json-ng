@@ -30,6 +30,10 @@ actor Main
 
     env.out.print("=== JSONPath Filters ===")
     _jsonpath_filter_example(env)
+    env.out.print("")
+
+    env.out.print("=== JSONPath Function Extensions ===")
+    _jsonpath_function_example(env)
 
   fun _build_example(env: Env) =>
     let doc = json.JsonObject
@@ -278,6 +282,53 @@ actor Main
           "$.store.book[?@.author >= 'N'].title")?
         let results = alpha.query(doc)
         env.out.print("Authors >= 'N': " + _format_results(results))
+      end
+
+    | let err: json.JsonParseError =>
+      env.out.print("JSON parse error: " + err.string())
+    end
+
+  fun _jsonpath_function_example(env: Env) =>
+    let source =
+      """
+      {"users":[{"name":"Alice","role":"admin","tags":["a","b"]},{"name":"Bob","role":"user","tags":["c"]},{"name":"Carol","role":"admin","tags":["d","e","f"]}]}
+      """
+
+    match json.JsonParser.parse(source)
+    | let doc: json.JsonType =>
+      // match(): full-string I-Regexp match
+      try
+        let admins =
+          json.JsonPathParser.compile("""$.users[?match(@.role, "admin")]""")?
+        let results = admins.query(doc)
+        env.out.print("Admins (match): " + _format_results(results))
+      end
+
+      // search(): substring I-Regexp search
+      try
+        let has_a =
+          json.JsonPathParser.compile("""$.users[?search(@.name, "a")]""")?
+        let results = has_a.query(doc)
+        env.out.print("Names containing 'a' (search): "
+          + results.size().string())
+      end
+
+      // length(): filter by string length
+      try
+        let short =
+          json.JsonPathParser.compile("$.users[?length(@.name) <= 3]")?
+        let results = short.query(doc)
+        env.out.print("Short names (length <= 3): "
+          + _format_results(results))
+      end
+
+      // count(): filter by array size
+      try
+        let multi =
+          json.JsonPathParser.compile("$.users[?count(@.tags[*]) > 1]")?
+        let results = multi.query(doc)
+        env.out.print("Multiple tags (count > 1): "
+          + results.size().string())
       end
 
     | let err: json.JsonParseError =>

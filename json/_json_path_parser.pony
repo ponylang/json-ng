@@ -334,8 +334,8 @@ class ref _JsonPathParser
 
   fun ref _parse_basic_expr(): _LogicalExpr ? =>
     """
-    Parse a basic expression: negation, parenthesized, query-based
-    (test or comparison), or literal-first comparison.
+    Parse a basic expression: negation, parenthesized, function call,
+    query-based (test or comparison), or literal-first comparison.
     """
     _skip_whitespace()
     if _looking_at('!') then
@@ -355,14 +355,54 @@ class ref _JsonPathParser
           _AbsFilterQuery(segments)
         end
         _NotExpr(_ExistenceExpr(query))
+      elseif _looking_at_function_name() or _looking_at_general_function() then
+        // Negated function call — only LogicalType functions allowed
+        let func = _parse_function_call()?
+        match func
+        | let m: _MatchExpr => _NotExpr(m)
+        | let s: _SearchExpr => _NotExpr(s)
+        else
+          _fail(
+            "Cannot negate value-returning function"
+            + " — only match() and search() can be negated")
+          error
+        end
       else
-        _fail("Expected '(', '@', or '$' after '!'")
+        _fail("Expected '(', '@', '$', or function name after '!'")
         error
       end
     elseif _looking_at('(') then
       _parse_paren_expr()?
     elseif _looking_at('@') or _looking_at('$') then
       _parse_test_or_comparison()?
+    elseif _looking_at_function_name() or _looking_at_general_function() then
+      // Function call — LogicalType as test-expr, ValueType as comparison LHS
+      let func = _parse_function_call()?
+      match func
+      | let m: _MatchExpr => m
+      | let s: _SearchExpr => s
+      else
+        // ValueType function — must be left side of a comparison
+        let left: _Comparable = match func
+        | let l: _LengthExpr => l
+        | let c: _CountExpr => c
+        | let v: _ValueExpr => v
+        else
+          _Unreachable(__loc)
+          error
+        end
+        _skip_whitespace()
+        if not _looking_at_comparison_op() then
+          _fail(
+            "Value-returning function requires a comparison operator"
+            + " (e.g., length(@.a) > 3)")
+          error
+        end
+        let op = _parse_comparison_op()?
+        _skip_whitespace()
+        let right = _parse_comparable()?
+        _ComparisonExpr(left, op, right)
+      end
     else
       // Must be a literal-first comparison: literal op comparable
       let left: _Comparable = _parse_literal()?
@@ -424,7 +464,7 @@ class ref _JsonPathParser
     _ExistenceExpr(query)
 
   fun ref _parse_comparable(): _Comparable ? =>
-    """Parse a comparable: singular query or literal."""
+    """Parse a comparable: singular query, function expression, or literal."""
     _skip_whitespace()
     if _looking_at('@') then
       _advance(1)
@@ -434,6 +474,17 @@ class ref _JsonPathParser
       _advance(1)
       let segs = _parse_singular_segments()?
       _AbsSingularQuery(segs)
+    elseif _looking_at_function_name() or _looking_at_general_function() then
+      // Only ValueType functions are valid as comparables
+      let func = _parse_function_call()?
+      match func
+      | let l: _LengthExpr => l
+      | let c: _CountExpr => c
+      | let v: _ValueExpr => v
+      else
+        _fail("match() and search() cannot be used in comparisons")
+        error
+      end
     else
       _parse_literal()?
     end
@@ -579,6 +630,135 @@ class ref _JsonPathParser
       segments.push(_parse_segment()?)
     end
     consume segments
+
+  // --- Function extension parsing (RFC 9535 Section 2.4) ---
+
+  fun _looking_at_function_name(): Bool =>
+    """Check if current position starts with a known function name + '('."""
+    _looking_at_str("length(") or _looking_at_str("count(") or
+    _looking_at_str("match(") or _looking_at_str("search(") or
+    _looking_at_str("value(")
+
+  fun _looking_at_general_function(): Bool =>
+    """
+    Check if current position starts with any lowercase identifier + '('.
+    Used to produce clear "Unknown function" errors when the name
+    isn't one of the 5 built-in functions.
+    """
+    try
+      let first = _source(_offset)?
+      if not ((first >= 'a') and (first <= 'z')) then return false end
+      // Scan past the identifier to find '('
+      var i = _offset + 1
+      while i < _source.size() do
+        let c = _source(i)?
+        if ((c >= 'a') and (c <= 'z')) or _is_digit(c) or (c == '_') then
+          i = i + 1
+        else
+          return c == '('
+        end
+      end
+      false
+    else
+      false
+    end
+
+  fun ref _parse_function_name(): String ? =>
+    """
+    Consume and return a function name identifier, or fail with a clear
+    error if the name isn't one of the 5 built-in functions.
+    """
+    let start = _offset
+    while _offset < _source.size() do
+      try
+        let c = _source(_offset)?
+        if ((c >= 'a') and (c <= 'z')) or _is_digit(c) or (c == '_') then
+          _advance(1)
+        else
+          break
+        end
+      else
+        break
+      end
+    end
+    let name: String val =
+      _source.substring(start.isize(), _offset.isize())
+    match name
+    | "length" | "count" | "match" | "search" | "value" => name
+    else
+      _fail("Unknown function: " + name)
+      error
+    end
+
+  fun ref _parse_function_call()
+    : (_MatchExpr | _SearchExpr | _LengthExpr | _CountExpr | _ValueExpr) ?
+  =>
+    """
+    Parse a function call: name '(' args ')'.
+
+    Dispatches by function name to parse the correct argument types
+    per RFC 9535 Section 2.4.
+    """
+    let name = _parse_function_name()?
+    _eat('(')?
+    _skip_whitespace()
+    let result = match name
+    | "length" =>
+      let arg = _parse_comparable()?
+      let r: (_MatchExpr | _SearchExpr | _LengthExpr
+        | _CountExpr | _ValueExpr) = _LengthExpr(arg)
+      r
+    | "count" =>
+      let query = _parse_filter_query_arg()?
+      let r: (_MatchExpr | _SearchExpr | _LengthExpr
+        | _CountExpr | _ValueExpr) = _CountExpr(query)
+      r
+    | "match" =>
+      let input = _parse_comparable()?
+      _skip_whitespace()
+      _eat(',')?
+      _skip_whitespace()
+      let pattern = _parse_comparable()?
+      let r: (_MatchExpr | _SearchExpr | _LengthExpr
+        | _CountExpr | _ValueExpr) = _MatchExpr(input, pattern)
+      r
+    | "search" =>
+      let input = _parse_comparable()?
+      _skip_whitespace()
+      _eat(',')?
+      _skip_whitespace()
+      let pattern = _parse_comparable()?
+      let r: (_MatchExpr | _SearchExpr | _LengthExpr
+        | _CountExpr | _ValueExpr) = _SearchExpr(input, pattern)
+      r
+    | "value" =>
+      let query = _parse_filter_query_arg()?
+      let r: (_MatchExpr | _SearchExpr | _LengthExpr
+        | _CountExpr | _ValueExpr) = _ValueExpr(query)
+      r
+    else
+      _fail("Unknown function: " + name)
+      error
+    end
+    _skip_whitespace()
+    _eat(')')?
+    result
+
+  fun ref _parse_filter_query_arg(): _FilterQuery ? =>
+    """
+    Parse a NodesType function argument: a filter query starting with
+    '@' or '$' followed by segments.
+    """
+    let is_rel = if _looking_at('@') then
+      _advance(1); true
+    elseif _looking_at('$') then
+      _advance(1); false
+    else
+      _fail("Expected '@' or '$' for query argument")
+      error
+    end
+    let segments = _parse_filter_segments()?
+    if is_rel then _RelFilterQuery(segments) else _AbsFilterQuery(segments) end
 
   fun ref _parse_comparison_op(): _ComparisonOp ? =>
     """Parse a comparison operator: ==, !=, <=, >=, <, >."""

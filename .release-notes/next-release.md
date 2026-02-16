@@ -58,5 +58,3 @@ Supported filter features:
 * Nested filters
 * RFC 9535 semantics: missing keys produce "Nothing" (not null), no type coercion, mixed I64/F64 comparison converts to F64
 
-Function extensions (`length()`, `count()`, `match()`, etc.) are not yet supported.
-

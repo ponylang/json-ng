@@ -24,6 +24,10 @@ primitive _FilterEval
       _FilterCompare(e.left, e.op, e.right, current, root)
     | let e: _ExistenceExpr =>
       _eval_existence(e.query, current, root)
+    | let e: _MatchExpr =>
+      _eval_match(e, current, root)
+    | let e: _SearchExpr =>
+      _eval_search(e, current, root)
     end
 
   fun _eval_existence(
@@ -94,6 +98,52 @@ primitive _FilterEval
     end
     node
 
+  fun _eval_match(
+    expr: _MatchExpr,
+    current: JsonType,
+    root: JsonType)
+    : Bool
+  =>
+    """
+    Evaluate match(): full-string I-Regexp match.
+    Returns false if either argument is not a string or if the pattern
+    is not a valid I-Regexp.
+    """
+    let input_val = _FilterCompare._resolve(expr.input, current, root)
+    let pattern_val = _FilterCompare._resolve(expr.pattern, current, root)
+    match (input_val, pattern_val)
+    | (let input_str: String, let pattern_str: String) =>
+      match _IRegexpCompiler.parse(pattern_str)
+      | let re: _IRegexp => re.is_match(input_str)
+      | let _: _IRegexpParseError => false
+      end
+    else
+      false
+    end
+
+  fun _eval_search(
+    expr: _SearchExpr,
+    current: JsonType,
+    root: JsonType)
+    : Bool
+  =>
+    """
+    Evaluate search(): substring I-Regexp search.
+    Returns false if either argument is not a string or if the pattern
+    is not a valid I-Regexp.
+    """
+    let input_val = _FilterCompare._resolve(expr.input, current, root)
+    let pattern_val = _FilterCompare._resolve(expr.pattern, current, root)
+    match (input_val, pattern_val)
+    | (let input_str: String, let pattern_str: String) =>
+      match _IRegexpCompiler.parse(pattern_str)
+      | let re: _IRegexp => re.search(input_str)
+      | let _: _IRegexpParseError => false
+      end
+    else
+      false
+    end
+
 
 primitive _FilterCompare
   """
@@ -140,6 +190,78 @@ primitive _FilterCompare
       _FilterEval._eval_singular(q, current, root)
     | let q: _AbsSingularQuery =>
       _FilterEval._eval_singular(q, current, root)
+    | let e: _LengthExpr => _eval_length(e.arg, current, root)
+    | let e: _CountExpr => _eval_count(e.query, current, root)
+    | let e: _ValueExpr => _eval_value(e.query, current, root)
+    end
+
+  fun _eval_length(
+    arg: _Comparable,
+    current: JsonType,
+    root: JsonType)
+    : _QueryResult
+  =>
+    """
+    Evaluate length(): Unicode scalar value count for strings,
+    element count for arrays, member count for objects, Nothing otherwise.
+    """
+    let val' = _resolve(arg, current, root)
+    match val'
+    | let s: String =>
+      // Count Unicode scalar values (codepoints) via UTF-32 iteration
+      var count: I64 = 0
+      var offset: USize = 0
+      while offset < s.size() do
+        try
+          (_, let len) = s.utf32(offset.isize())?
+          offset = offset + len.usize()
+          count = count + 1
+        else
+          break
+        end
+      end
+      count
+    | let arr: JsonArray => arr.size().i64()
+    | let obj: JsonObject => obj.size().i64()
+    else
+      _Nothing
+    end
+
+  fun _eval_count(
+    query: _FilterQuery,
+    current: JsonType,
+    root: JsonType)
+    : _QueryResult
+  =>
+    """Evaluate count(): cardinality of the nodelist from a query."""
+    let results = match query
+    | let q: _RelFilterQuery =>
+      _JsonPathEval(current, root, q.segments)
+    | let q: _AbsFilterQuery =>
+      _JsonPathEval(root, root, q.segments)
+    end
+    results.size().i64()
+
+  fun _eval_value(
+    query: _FilterQuery,
+    current: JsonType,
+    root: JsonType)
+    : _QueryResult
+  =>
+    """
+    Evaluate value(): extract a single value from a nodelist.
+    Returns the value if exactly one node, Nothing otherwise.
+    """
+    let results = match query
+    | let q: _RelFilterQuery =>
+      _JsonPathEval(current, root, q.segments)
+    | let q: _AbsFilterQuery =>
+      _JsonPathEval(root, root, q.segments)
+    end
+    if results.size() == 1 then
+      try results(0)? else _Nothing end
+    else
+      _Nothing
     end
 
   fun _eq(left: _QueryResult, right: _QueryResult): Bool =>
