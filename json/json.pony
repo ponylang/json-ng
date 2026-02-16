@@ -157,6 +157,8 @@ Supported JSONPath syntax:
 * `$[?@.author]` — filter by existence (member present)
 * `$[?@.a > 1 && @.b < 2]` — logical AND, OR (`||`), NOT (`!`)
 * `$[?@.type == $.default]` — absolute query (`$`) in filters
+* `$[?match(@.name, "[A-Z].*")]` — function extensions (`length`, `count`,
+  `match`, `search`, `value`)
 * `query_one()` — convenience returning first match or `NotFound`
 
 ## Serialization
@@ -235,10 +237,6 @@ try parser.parse(source)? end
 
 For most use cases, `JsonParser.parse()` is simpler and sufficient.
 
-## Limitations
-
-JSONPath function extensions (`length()`, `count()`, `match()`, etc.) are
-not supported.
 """
 
 use "collections/persistent"

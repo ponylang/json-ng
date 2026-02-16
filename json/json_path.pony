@@ -17,7 +17,9 @@ class val JsonPath
 
   Evaluation follows RFC 9535 semantics: missing keys, out-of-bounds
   indices, and type mismatches produce empty results, never errors.
-  Only malformed path strings produce errors (at parse time).
+  Only malformed path strings produce errors (at parse time). Filter
+  expressions support function extensions (`length`, `count`, `match`,
+  `search`, `value`) per RFC 9535 Section 2.4.
 
   For simple single-value extraction, `query_one()` returns the first
   match or NotFound.
