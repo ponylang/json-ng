@@ -12,6 +12,11 @@ actor \nodoc\ Main is TestList
     test(Property1UnitTest[USize](_ArraySizeProperty))
     test(Property1UnitTest[F64](_F64RoundtripProperty))
     test(Property1UnitTest[String](_FilterSafetyProperty))
+    test(Property1UnitTest[(String, String)](
+      _FunctionCountLengthEquivalenceProperty))
+    test(Property1UnitTest[(String, String)](
+      _FunctionMatchImpliesSearchProperty))
+    test(Property1UnitTest[(String, String)](_FunctionSafetyProperty))
     test(Property1UnitTest[I64](_I64RoundtripProperty))
     test(Property1UnitTest[(String, String)](_IRegexpIsMatchImpliesSearchProperty))
     test(Property1UnitTest[String](_IRegexpLiteralRoundtripProperty))
@@ -1499,6 +1504,170 @@ class \nodoc\ iso _FilterSafetyProperty is Property1[String]
           ph.assert_true(results.size() >= 0)
         else
           ph.fail("Failed to compile: " + path_str)
+        end
+      end
+    | let _: JsonParseError => None
+    end
+
+// ===================================================================
+// Property Tests — JSONPath Function Extensions
+// ===================================================================
+
+primitive \nodoc\ _SafeIRegexpGen
+  """
+  Generates valid I-Regexp patterns that are safe to embed in JSONPath
+  single-quoted strings. Avoids backslash escapes (\p, \n, etc.) since
+  the JSONPath string parser interprets backslashes before the I-Regexp
+  parser sees them.
+  """
+  fun apply(max_depth: USize = 2): Generator[String] =>
+    let that = this
+    Generator[String](
+      object is GenObj[String]
+        fun generate(rnd: Randomness): String =>
+          that._gen(rnd, max_depth)
+      end)
+
+  fun _gen(rnd: Randomness, depth: USize): String =>
+    if depth == 0 then return _gen_atom(rnd) end
+    match rnd.usize(0, 5)
+    | 0 => _gen_atom(rnd)
+    | 1 => _gen(rnd, depth - 1) + "|" + _gen(rnd, depth - 1)
+    | 2 => _gen_atom(rnd) + _gen_atom(rnd)
+    | 3 => "(" + _gen(rnd, depth - 1) + ")" + _gen_quant(rnd)
+    | 4 => _gen_atom(rnd) + _gen_quant(rnd)
+    | 5 => _gen(rnd, depth - 1) + _gen_atom(rnd)
+    else _gen_atom(rnd)
+    end
+
+  fun _gen_atom(rnd: Randomness): String =>
+    match rnd.usize(0, 3)
+    | 0 => String.from_array([rnd.u8('a', 'z')])
+    | 1 => "."
+    | 2 => "[a-z]"
+    | 3 => "[0-9]"
+    else "a"
+    end
+
+  fun _gen_quant(rnd: Randomness): String =>
+    match rnd.usize(0, 3)
+    | 0 => ""
+    | 1 => "*"
+    | 2 => "+"
+    | 3 => "?"
+    else ""
+    end
+
+class \nodoc\ iso _FunctionMatchImpliesSearchProperty
+  is Property1[(String, String)]
+  """
+  If match(@.v, pattern) selects a node, search(@.v, pattern) must also
+  select it. Full-string match is a special case of substring search.
+  """
+  fun name(): String => "json/jsonpath/filter/function/match-implies-search"
+
+  fun gen(): Generator[(String, String)] =>
+    Generators.zip2[String, String](
+      _JsonValueStringGen(2),
+      _SafeIRegexpGen(1))
+
+  fun ref property(sample: (String, String), ph: PropertyHelper) =>
+    (let json_str, let pattern) = sample
+    match JsonParser.parse(json_str)
+    | let doc: JsonType =>
+      let match_path: String val = "$[?match(@.v, '" + pattern + "')]"
+      let search_path: String val = "$[?search(@.v, '" + pattern + "')]"
+      match (JsonPathParser.parse(match_path),
+        JsonPathParser.parse(search_path))
+      | (let mp: JsonPath, let sp: JsonPath) =>
+        let match_results = mp.query(doc)
+        let search_results = sp.query(doc)
+        // Every match result must also be a search result
+        ph.assert_true(match_results.size() <= search_results.size(),
+          "match returned " + match_results.size().string()
+          + " but search returned " + search_results.size().string()
+          + " for pattern '" + pattern + "'")
+      end
+    | let _: JsonParseError => None
+    end
+
+class \nodoc\ iso _FunctionCountLengthEquivalenceProperty
+  is Property1[(String, String)]
+  """
+  For array values, count(@[*]) must equal length(@). These are two
+  independent code paths that should agree on array cardinality.
+
+  Generates two JSON values, wraps each in an array so the "v" field
+  is always an array, then asserts count(@.v[*]) == length(@.v) for
+  both elements.
+  """
+  fun name(): String =>
+    "json/jsonpath/filter/function/count-length-equivalence"
+
+  fun gen(): Generator[(String, String)] =>
+    Generators.zip2[String, String](
+      _JsonValueStringGen(2),
+      _JsonValueStringGen(2))
+
+  fun ref property(sample: (String, String), ph: PropertyHelper) =>
+    (let json1, let json2) = sample
+    // Wrap each value inside an array so @.v is always an array.
+    // This ensures count(@.v[*]) and length(@.v) both return integers
+    // and must agree.
+    let wrapped: String val =
+      "[{\"v\":[" + json1 + "]},{\"v\":[" + json2 + "]}]"
+    match JsonParser.parse(wrapped)
+    | let doc: JsonType =>
+      match JsonPathParser.parse("$[?count(@.v[*]) == length(@.v)]")
+      | let eq_p: JsonPath =>
+        let eq_results = eq_p.query(doc)
+        // Both elements have array "v", so count and length must agree
+        // for both → eq should return 2 results
+        ph.assert_eq[USize](2, eq_results.size(),
+          "count(@.v[*]) should equal length(@.v) for arrays")
+      end
+    | let _: JsonParseError => None
+    end
+
+class \nodoc\ iso _FunctionSafetyProperty
+  is Property1[(String, String)]
+  """
+  Function extension paths with generated I-Regexp patterns must never
+  crash, regardless of the JSON document or pattern content.
+  """
+  fun name(): String => "json/jsonpath/filter/function/safety"
+
+  fun gen(): Generator[(String, String)] =>
+    Generators.zip2[String, String](
+      _JsonValueStringGen(2),
+      _SafeIRegexpGen(1))
+
+  fun ref property(sample: (String, String), ph: PropertyHelper) =>
+    (let json_str, let pattern) = sample
+    match JsonParser.parse(json_str)
+    | let doc: JsonType =>
+      let match_path: String val = "$[?match(@.v, '" + pattern + "')]"
+      let search_path: String val = "$[?search(@.v, '" + pattern + "')]"
+      let not_match: String val = "$[?!match(@.v, '" + pattern + "')]"
+      let not_search: String val = "$[?!search(@.v, '" + pattern + "')]"
+      let paths: Array[String val] val = [
+        match_path
+        search_path
+        not_match
+        not_search
+        "$[?length(@.v) > 0]"
+        "$[?count(@.*) >= 0]"
+        "$[?value(@.v) == 1]"
+        "$[?length(value(@.v)) > 0]"
+        "$[?count(@.v[*]) == length(@.v)]"
+      ]
+      for path_str in paths.values() do
+        match JsonPathParser.parse(path_str)
+        | let path: JsonPath =>
+          let results = path.query(doc)
+          ph.assert_true(results.size() >= 0)
+        | let e: JsonPathParseError =>
+          ph.fail("Failed to compile: " + path_str + " — " + e.string())
         end
       end
     | let _: JsonParseError => None

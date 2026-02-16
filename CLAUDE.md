@@ -14,7 +14,7 @@ make clean              # clean build artifacts + corral cache
 
 ## Project Status
 
-**Current state**: All features compile and run. Comprehensive test suite with 17 property-based tests (PonyCheck) and 48 example-based tests.
+**Current state**: All features compile and run. Comprehensive test suite with 20 property-based tests (PonyCheck) and 48 example-based tests.
 
 **What's implemented**:
 - Immutable JSON value types (`JsonObject`, `JsonArray`, `JsonNull`) backed by persistent collections (CHAMP Map, HAMT Vec)
