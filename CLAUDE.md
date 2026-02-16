@@ -14,7 +14,7 @@ make clean              # clean build artifacts + corral cache
 
 ## Project Status
 
-**Current state**: All features compile and run. Comprehensive test suite with 12 property-based tests (PonyCheck) and 37 example-based tests.
+**Current state**: All features compile and run. Comprehensive test suite with 17 property-based tests (PonyCheck) and 43 example-based tests.
 
 **What's implemented**:
 - Immutable JSON value types (`JsonObject`, `JsonArray`, `JsonNull`) backed by persistent collections (CHAMP Map, HAMT Vec)
@@ -24,7 +24,7 @@ make clean              # clean build artifacts + corral cache
 - Example program demonstrating all features
 
 **What's NOT implemented**:
-- JSONPath function extensions (`length()`, `count()`, `match()`, etc.)
+- JSONPath function extensions (`length()`, `count()`, `match()`, `search()`, etc.) — the I-Regexp engine is implemented but not yet wired into JSONPath
 
 ## Architecture
 
@@ -73,7 +73,7 @@ With `JsonNull`, Pony's `None` serves its natural role: "no result yet" in `_Tre
 
 | File | Contents |
 |------|----------|
-| `_test.pony` | Test suite (12 property + 37 example tests) |
+| `_test.pony` | Test suite (17 property + 43 example tests) |
 | `_tree_builder.pony` | Assembles token events into `JsonType` tree |
 | `_json_print.pony` | Serialization (compact + pretty) |
 | `_traversal.pony` | Lens traversal trait and implementations |
@@ -83,6 +83,13 @@ With `JsonNull`, Pony's `None` serves its natural role: "no result yet" in `_Tre
 | `_json_path_eval.pony` | JSONPath evaluation pipeline |
 | `_json_path_filter.pony` | Filter expression AST types |
 | `_json_path_filter_eval.pony` | Filter expression evaluator (`_FilterEval`, `_FilterCompare`) |
+| `_mort.pony` | `_Unreachable` panic primitive for impossible code paths |
+| `_i_regexp.pony` | `_IRegexp` compiled pattern, `_IRegexpParseError`, `_IRegexpCompiler` entry point |
+| `_i_regexp_ast.pony` | `_RegexNode` union type and AST node classes |
+| `_i_regexp_parser.pony` | `_IRegexpParser` recursive descent parser (RFC 9485) |
+| `_i_regexp_nfa.pony` | `_NFA`, `_NFABuilder`, Thompson NFA construction |
+| `_i_regexp_exec.pony` | `_NFAExec` simulation, `_StateSet`, `_RangeMatcher` |
+| `_unicode_categories.pony` | Unicode 16.0 General Category range tables, `_UnicodeCategories` lookup, `_RangeOps` |
 
 ### Access Pattern Comparison
 
