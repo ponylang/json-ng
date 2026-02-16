@@ -122,10 +122,10 @@ class val _ComparisonExpr
   """
   Comparison between two comparables.
 
-  Both sides are either literal values or singular queries (which produce
-  at most one node). Non-singular queries are not allowed in comparisons
-  per RFC 9535 — that constraint is enforced at the type level by using
-  `_Comparable` rather than `_FilterQuery`.
+  Both sides are `_Comparable` values: literals, singular queries,
+  or ValueType function expressions (`length`, `count`, `value`).
+  Non-singular queries are not allowed directly in comparisons
+  per RFC 9535 — that constraint is enforced at the type level.
   """
   let left: _Comparable
   let op: _ComparisonOp

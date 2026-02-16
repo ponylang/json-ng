@@ -73,7 +73,7 @@ With `JsonNull`, Pony's `None` serves its natural role: "no result yet" in `_Tre
 
 | File | Contents |
 |------|----------|
-| `_test.pony` | Test suite (17 property + 48 example tests) |
+| `_test.pony` | Test suite (20 property + 48 example tests) |
 | `_tree_builder.pony` | Assembles token events into `JsonType` tree |
 | `_json_print.pony` | Serialization (compact + pretty) |
 | `_traversal.pony` | Lens traversal trait and implementations |
