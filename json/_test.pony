@@ -921,10 +921,10 @@ class \nodoc\ iso _TestNavNotFound is UnitTest
     // Type mismatch: index on object
     h.assert_false(nav_obj(USize(0)).found())
 
-    // NotFound propagates through chain
+    // JsonNotFound propagates through chain
     h.assert_false(nav_obj("x")("y")("z").found())
 
-    // Extractor on NotFound raises
+    // Extractor on JsonNotFound raises
     h.assert_error({() ? => nav_obj("missing").as_string()? })
 
 class \nodoc\ iso _TestNavInspection is UnitTest
@@ -952,8 +952,8 @@ class \nodoc\ iso _TestNavInspection is UnitTest
     end
 
     match JsonNav(obj)("missing").json()
-    | NotFound => None // expected
-    else h.fail("Expected NotFound from json()")
+    | JsonNotFound => None // expected
+    else h.fail("Expected JsonNotFound from json()")
     end
 
 // ===================================================================
@@ -982,18 +982,18 @@ class \nodoc\ iso _TestLensGet is UnitTest
     else h.fail("Nested get failed")
     end
 
-    // Missing intermediate -> NotFound
+    // Missing intermediate -> JsonNotFound
     let missing = JsonLens("x")("y")
     match missing.get(doc)
-    | NotFound => None
-    else h.fail("Expected NotFound for missing path")
+    | JsonNotFound => None
+    else h.fail("Expected JsonNotFound for missing path")
     end
 
-    // Type mismatch -> NotFound
+    // Type mismatch -> JsonNotFound
     let mismatch = JsonLens("a")("b")("c")
     match mismatch.get(doc)
-    | NotFound => None
-    else h.fail("Expected NotFound for type mismatch")
+    | JsonNotFound => None
+    else h.fail("Expected JsonNotFound for type mismatch")
     end
 
 class \nodoc\ iso _TestLensSet is UnitTest
@@ -1026,11 +1026,11 @@ class \nodoc\ iso _TestLensSet is UnitTest
     let nav = JsonNav(doc)
     h.assert_eq[I64](1, nav("a")("b").as_i64()?)
 
-    // Missing intermediate -> NotFound
+    // Missing intermediate -> JsonNotFound
     let missing = JsonLens("x")("y")
     match missing.set(doc, I64(1))
-    | NotFound => None
-    else h.fail("Expected NotFound for missing intermediate")
+    | JsonNotFound => None
+    else h.fail("Expected JsonNotFound for missing intermediate")
     end
 
 class \nodoc\ iso _TestLensRemove is UnitTest
@@ -1053,12 +1053,12 @@ class \nodoc\ iso _TestLensRemove is UnitTest
     else h.fail("Remove failed")
     end
 
-    // Remove on array index -> NotFound
+    // Remove on array index -> JsonNotFound
     let arr_doc = JsonObject.update("arr", JsonArray.push(I64(1)))
     let arr_lens = JsonLens("arr")(USize(0))
     match arr_lens.remove(arr_doc)
-    | NotFound => None
-    else h.fail("Expected NotFound for array index remove")
+    | JsonNotFound => None
+    else h.fail("Expected JsonNotFound for array index remove")
     end
 
 class \nodoc\ iso _TestLensComposition is UnitTest
@@ -1231,10 +1231,10 @@ class \nodoc\ iso _TestJsonPathQueryBasic is UnitTest
     else h.fail("query_one should find $.a")
     end
 
-    // query_one returns NotFound when empty
+    // query_one returns JsonNotFound when empty
     match p5.query_one(doc)
-    | NotFound => None
-    else h.fail("query_one should return NotFound for missing")
+    | JsonNotFound => None
+    else h.fail("query_one should return JsonNotFound for missing")
     end
 
 class \nodoc\ iso _TestJsonPathQueryAdvanced is UnitTest

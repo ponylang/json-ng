@@ -10,13 +10,13 @@ class val JsonLens
   // Read
   match host_lens.get(doc)
   | let host: String => env.out.print(host)
-  | NotFound => env.out.print("no host configured")
+  | JsonNotFound => env.out.print("no host configured")
   end
 
   // Modify (returns new document with the change applied)
   match host_lens.set(doc, "newhost.example.com")
   | let updated: JsonType => // updated doc
-  | NotFound => // path didn't exist
+  | JsonNotFound => // path didn't exist
   end
   ```
   """
@@ -38,21 +38,21 @@ class val JsonLens
     end
     JsonLens._trav(_traversal.compose(step))
 
-  fun get(input: JsonType): (JsonType | NotFound) =>
+  fun get(input: JsonType): (JsonType | JsonNotFound) =>
     """Apply this lens to read a value."""
     _traversal(input)
 
-  fun set(input: JsonType, value: JsonType): (JsonType | NotFound) =>
+  fun set(input: JsonType, value: JsonType): (JsonType | JsonNotFound) =>
     """
     Apply this lens to update a value, returning a new root.
-    Returns NotFound if the path doesn't exist.
+    Returns JsonNotFound if the path doesn't exist.
     """
     _traversal.update(input, value)
 
-  fun remove(input: JsonType): (JsonType | NotFound) =>
+  fun remove(input: JsonType): (JsonType | JsonNotFound) =>
     """
     Apply this lens to remove a value, returning a new root.
-    Returns NotFound if the path doesn't exist.
+    Returns JsonNotFound if the path doesn't exist.
     """
     _traversal.update(input, None)
 
@@ -61,5 +61,5 @@ class val JsonLens
     JsonLens._trav(_traversal.compose(other._traversal))
 
   fun or_else(alt: JsonLens): JsonLens =>
-    """Choice: try this lens, fall back to alt if NotFound."""
+    """Choice: try this lens, fall back to alt if JsonNotFound."""
     JsonLens._trav(_traversal.or_else(alt._traversal))

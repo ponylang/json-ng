@@ -67,7 +67,7 @@ With `JsonNull`, Pony's `None` serves its natural role: "no result yet" in `_Tre
 | `json_token_notify.pony` | `JsonTokenNotify` interface |
 | `json_parse_error.pony` | `JsonParseError` |
 | `json_path.pony` | `JsonPath`, `JsonPathParser`, `JsonPathParseError` |
-| `not_found.pony` | `NotFound` sentinel |
+| `json_not_found.pony` | `JsonNotFound` sentinel |
 
 **Internal** (in `json/`):
 
@@ -93,7 +93,7 @@ With `JsonNull`, Pony's `None` serves its natural role: "no result yet" in `_Tre
 
 ### Access Pattern Comparison
 
-- **`JsonNav`**: Wraps a specific value. Read-only. One-shot chained access. NotFound propagates through chains. Good for "grab this one thing."
+- **`JsonNav`**: Wraps a specific value. Read-only. One-shot chained access. JsonNotFound propagates through chains. Good for "grab this one thing."
 - **`JsonLens`**: Describes a reusable path (not tied to a value). Supports get/set/remove. Composable via `compose` and `or_else`. Good for "define a path once, apply to many documents."
 - **`JsonPath`**: String-based query language (RFC 9535 subset). Can match multiple values via wildcards, recursive descent, slicing. Returns arrays of results. Good for "find all prices in the document."
 

@@ -5,18 +5,18 @@ trait val _JsonTraversal
   apply: read a value at the focus point.
   update: write or delete a value at the focus point, returning a new root.
   """
-  fun apply(v: JsonType): (JsonType | NotFound)
-  fun update(input: JsonType, value: (JsonType | None)): (JsonType | NotFound)
+  fun apply(v: JsonType): (JsonType | JsonNotFound)
+  fun update(input: JsonType, value: (JsonType | None)): (JsonType | JsonNotFound)
   fun val compose(t: _JsonTraversal): _JsonTraversal => _TravCompose(this, t)
   fun val or_else(alt: _JsonTraversal): _JsonTraversal => _TravChoice(this, alt)
 
 primitive _NoTraversal is _JsonTraversal
   """Identity traversal — returns the input unchanged."""
-  fun apply(v: JsonType): (JsonType | NotFound) => v
-  fun update(input: JsonType, value: (JsonType | None)): (JsonType | NotFound) =>
+  fun apply(v: JsonType): (JsonType | JsonNotFound) => v
+  fun update(input: JsonType, value: (JsonType | None)): (JsonType | JsonNotFound) =>
     match value
     | let j: JsonType => j
-    else NotFound
+    else JsonNotFound
     end
 
 class val _TravObjKey is _JsonTraversal
@@ -25,12 +25,12 @@ class val _TravObjKey is _JsonTraversal
 
   new val create(key: String) => _key = key
 
-  fun apply(v: JsonType): (JsonType | NotFound) =>
+  fun apply(v: JsonType): (JsonType | JsonNotFound) =>
     try (v as JsonObject)(_key)?
-    else NotFound
+    else JsonNotFound
     end
 
-  fun update(input: JsonType, value: (JsonType | None)): (JsonType | NotFound) =>
+  fun update(input: JsonType, value: (JsonType | None)): (JsonType | JsonNotFound) =>
     try
       let obj = input as JsonObject
       match value
@@ -38,7 +38,7 @@ class val _TravObjKey is _JsonTraversal
       | None => obj.remove(_key)
       end
     else
-      NotFound
+      JsonNotFound
     end
 
 class val _TravArrayIndex is _JsonTraversal
@@ -47,22 +47,22 @@ class val _TravArrayIndex is _JsonTraversal
 
   new val create(idx: USize) => _idx = idx
 
-  fun apply(v: JsonType): (JsonType | NotFound) =>
+  fun apply(v: JsonType): (JsonType | JsonNotFound) =>
     try (v as JsonArray)(_idx)?
-    else NotFound
+    else JsonNotFound
     end
 
-  fun update(input: JsonType, value: (JsonType | None)): (JsonType | NotFound) =>
+  fun update(input: JsonType, value: (JsonType | None)): (JsonType | JsonNotFound) =>
     try
       let arr = input as JsonArray
       match value
       | let j: JsonType => arr.update(_idx, j)?
       else
-        // None (remove) on array index — not supported, return NotFound
-        NotFound
+        // None (remove) on array index — not supported, return JsonNotFound
+        JsonNotFound
       end
     else
-      NotFound
+      JsonNotFound
     end
 
 class val _TravCompose is _JsonTraversal
@@ -74,23 +74,23 @@ class val _TravCompose is _JsonTraversal
     _a = a
     _b = b
 
-  fun apply(v: JsonType): (JsonType | NotFound) =>
+  fun apply(v: JsonType): (JsonType | JsonNotFound) =>
     match _a(v)
     | let j: JsonType => _b(j)
-    else NotFound
+    else JsonNotFound
     end
 
-  fun update(input: JsonType, value: (JsonType | None)): (JsonType | NotFound) =>
+  fun update(input: JsonType, value: (JsonType | None)): (JsonType | JsonNotFound) =>
     try
       let intermediate = _a(input) as JsonType
       let inner_result = _b.update(intermediate, value) as JsonType
       _a.update(input, inner_result)
     else
-      NotFound
+      JsonNotFound
     end
 
 class val _TravChoice is _JsonTraversal
-  """Choice: try _a, fall back to _b if NotFound."""
+  """Choice: try _a, fall back to _b if JsonNotFound."""
   let _a: _JsonTraversal
   let _b: _JsonTraversal
 
@@ -98,13 +98,13 @@ class val _TravChoice is _JsonTraversal
     _a = a
     _b = b
 
-  fun apply(v: JsonType): (JsonType | NotFound) =>
+  fun apply(v: JsonType): (JsonType | JsonNotFound) =>
     match _a(v)
     | let j: JsonType => j
     else _b(v)
     end
 
-  fun update(input: JsonType, value: (JsonType | None)): (JsonType | NotFound) =>
+  fun update(input: JsonType, value: (JsonType | None)): (JsonType | JsonNotFound) =>
     match _a(input)
     | let _: JsonType => _a.update(input, value)
     else _b.update(input, value)

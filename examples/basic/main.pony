@@ -91,7 +91,7 @@ actor Main
         env.out.print("Count: " + count.string())
       end
 
-      // NotFound propagation — no crash, just NotFound at the end
+      // JsonNotFound propagation — no crash, just JsonNotFound at the end
       let missing = nav("nonexistent")("deep")("path")
       env.out.print("Missing path found? " + missing.found().string())
 
@@ -112,7 +112,7 @@ actor Main
       match host_lens.get(j)
       | let host: json.JsonType =>
         env.out.print("Host: " + host.string())
-      | json.NotFound =>
+      | json.JsonNotFound =>
         env.out.print("Host not found")
       end
 
@@ -122,7 +122,7 @@ actor Main
       match port_lens.get(j)
       | let port: json.JsonType =>
         env.out.print("Port: " + port.string())
-      | json.NotFound =>
+      | json.JsonNotFound =>
         env.out.print("Port not found")
       end
 
@@ -147,7 +147,7 @@ actor Main
           env.out.print("After host change:")
           env.out.print(obj.pretty_string())
         end
-      | json.NotFound =>
+      | json.JsonNotFound =>
         env.out.print("Could not set host — path not found")
       end
 
@@ -160,7 +160,7 @@ actor Main
           env.out.print("After removing debug:")
           env.out.print(obj.pretty_string())
         end
-      | json.NotFound =>
+      | json.JsonNotFound =>
         env.out.print("Could not remove debug — path not found")
       end
 
@@ -200,7 +200,7 @@ actor Main
         match first_title.query_one(doc)
         | let title: json.JsonType =>
           env.out.print("First title: " + title.string())
-        | json.NotFound =>
+        | json.JsonNotFound =>
           env.out.print("No title found")
         end
       end
