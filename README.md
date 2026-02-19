@@ -1,6 +1,6 @@
 # json-ng
 
-An immutable JSON library for [Pony](https://www.ponylang.io/).
+A JSON library for [Pony](https://www.ponylang.io/).
 
 ## Status
 

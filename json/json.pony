@@ -1,7 +1,7 @@
 """
 # json-ng
 
-Immutable JSON library for Pony. All JSON values are `val` — construction
+JSON library for Pony. All JSON values are `val` — construction
 uses chained method calls that return new values with structural sharing
 via persistent collections. Three access patterns are available for
 reading and modifying JSON structures, from simple one-shot lookups to
