@@ -1,6 +1,6 @@
 # json-ng
 
-Immutable JSON library for Pony, exploring a design for potential stdlib inclusion.
+JSON library for Pony, exploring a design for potential stdlib inclusion.
 
 ## Building and Testing
 
