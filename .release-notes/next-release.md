@@ -101,6 +101,28 @@ Supported functions:
 
 Type system enforcement per RFC 9535: LogicalType functions (`match`, `search`) can only appear as standalone test expressions or negated with `!`. ValueType functions (`length`, `count`, `value`) can only appear in comparisons. Invalid usage produces a clear parse error.
 
+## Rename NotFound to JsonNotFound
+
+The `NotFound` sentinel type has been renamed to `JsonNotFound` for consistency with the library's naming convention (`JsonObject`, `JsonArray`, `JsonNull`, etc.).
+
+Before:
+
+```pony
+match lens.get(doc)
+| let v: json.JsonValue => // use v
+| json.NotFound => // handle missing
+end
+```
+
+After:
+
+```pony
+match lens.get(doc)
+| let v: json.JsonValue => // use v
+| json.JsonNotFound => // handle missing
+end
+```
+
 ## Rename JsonType to JsonValue
 
 The `JsonType` type alias has been renamed to `JsonValue` for clarity — it names a value, not a type category.
