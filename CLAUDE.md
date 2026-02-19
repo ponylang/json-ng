@@ -31,14 +31,14 @@ make clean              # clean build artifacts + corral cache
 ### Core Types (`json/json.pony`)
 
 ```pony
-type JsonType is (JsonObject | JsonArray | String | I64 | F64 | Bool | JsonNull)
+type JsonValue is (JsonObject | JsonArray | String | I64 | F64 | Bool | JsonNull)
 ```
 
 All JSON values are `val`. Construction is via chained method calls that return new values with structural sharing.
 
 ### Why `JsonNull` instead of `None`
 
-Pony's persistent `HashMap` uses `None` as an internal "key not found" sentinel (in `_MapSubNodes.apply`). When `V` includes `None` (as it would if `JsonType` used `None` for JSON null), the HAMT can't distinguish "key not found" from "value is null":
+Pony's persistent `HashMap` uses `None` as an internal "key not found" sentinel (in `_MapSubNodes.apply`). When `V` includes `None` (as it would if `JsonValue` used `None` for JSON null), the HAMT can't distinguish "key not found" from "value is null":
 
 - `HashMap.apply` returns `None` instead of raising for missing keys
 - `HashMap.contains` returns `false` for keys that map to `None`
@@ -56,7 +56,7 @@ With `JsonNull`, Pony's `None` serves its natural role: "no result yet" in `_Tre
 
 | File | Contents |
 |------|----------|
-| `json.pony` | Package docstring, `JsonType` union, `JsonNull` |
+| `json.pony` | Package docstring, `JsonValue` union, `JsonNull` |
 | `json_object.pony` | `JsonObject` — immutable object backed by `pc.Map` |
 | `json_array.pony` | `JsonArray` — immutable array backed by `pc.Vec` |
 | `json_nav.pony` | `JsonNav` — chained read-only navigation |
@@ -74,7 +74,7 @@ With `JsonNull`, Pony's `None` serves its natural role: "no result yet" in `_Tre
 | File | Contents |
 |------|----------|
 | `_test.pony` | Test suite (20 property + 48 example tests) |
-| `_tree_builder.pony` | Assembles token events into `JsonType` tree |
+| `_tree_builder.pony` | Assembles token events into `JsonValue` tree |
 | `_json_print.pony` | Serialization (compact + pretty) |
 | `_traversal.pony` | Lens traversal trait and implementations |
 | `_json_path_parser.pony` | Recursive descent JSONPath parser |

@@ -58,7 +58,7 @@ actor Main
       """
 
     match json.JsonParser.parse(source)
-    | let j: json.JsonType =>
+    | let j: json.JsonValue =>
       env.out.print("Parsed successfully")
       match j
       | let obj: json.JsonObject => env.out.print("Root is object with "
@@ -75,7 +75,7 @@ actor Main
       """
 
     match json.JsonParser.parse(source)
-    | let j: json.JsonType =>
+    | let j: json.JsonValue =>
       let nav = json.JsonNav(j)
       try
         let first_name = nav("users")(USize(0))("name").as_string()?
@@ -106,11 +106,11 @@ actor Main
       """
 
     match json.JsonParser.parse(source)
-    | let j: json.JsonType =>
+    | let j: json.JsonValue =>
       // Read via lens
       let host_lens = json.JsonLens("config")("database")("host")
       match host_lens.get(j)
-      | let host: json.JsonType =>
+      | let host: json.JsonValue =>
         env.out.print("Host: " + host.string())
       | json.JsonNotFound =>
         env.out.print("Host not found")
@@ -120,7 +120,7 @@ actor Main
       let db_lens = json.JsonLens("config")("database")
       let port_lens = db_lens.compose(json.JsonLens("port"))
       match port_lens.get(j)
-      | let port: json.JsonType =>
+      | let port: json.JsonValue =>
         env.out.print("Port: " + port.string())
       | json.JsonNotFound =>
         env.out.print("Port not found")
@@ -137,11 +137,11 @@ actor Main
       """
 
     match json.JsonParser.parse(source)
-    | let j: json.JsonType =>
+    | let j: json.JsonValue =>
       // Modify a deeply nested value
       let host_lens = json.JsonLens("config")("database")("host")
       match host_lens.set(j, "prod.example.com")
-      | let updated: json.JsonType =>
+      | let updated: json.JsonValue =>
         match updated
         | let obj: json.JsonObject =>
           env.out.print("After host change:")
@@ -154,7 +154,7 @@ actor Main
       // Remove a value
       let debug_lens = json.JsonLens("config")("debug")
       match debug_lens.remove(j)
-      | let updated: json.JsonType =>
+      | let updated: json.JsonValue =>
         match updated
         | let obj: json.JsonObject =>
           env.out.print("After removing debug:")
@@ -175,7 +175,7 @@ actor Main
       """
 
     match json.JsonParser.parse(source)
-    | let doc: json.JsonType =>
+    | let doc: json.JsonValue =>
       // Wildcard: all authors
       match json.JsonPathParser.parse("$.store.book[*].author")
       | let path: json.JsonPath =>
@@ -198,7 +198,7 @@ actor Main
         let first_title =
           json.JsonPathParser.compile("$.store.book[0].title")?
         match first_title.query_one(doc)
-        | let title: json.JsonType =>
+        | let title: json.JsonValue =>
           env.out.print("First title: " + title.string())
         | json.JsonNotFound =>
           env.out.print("No title found")
@@ -248,7 +248,7 @@ actor Main
       """
 
     match json.JsonParser.parse(source)
-    | let doc: json.JsonType =>
+    | let doc: json.JsonValue =>
       // Comparison filter: books under $10
       try
         let cheap =
@@ -295,7 +295,7 @@ actor Main
       """
 
     match json.JsonParser.parse(source)
-    | let doc: json.JsonType =>
+    | let doc: json.JsonValue =>
       // match(): full-string I-Regexp match
       try
         let admins =
@@ -335,7 +335,7 @@ actor Main
       env.out.print("JSON parse error: " + err.string())
     end
 
-  fun _format_results(results: Array[json.JsonType] val): String =>
+  fun _format_results(results: Array[json.JsonValue] val): String =>
     let buf = recover iso String end
     buf.push('[')
     var first = true

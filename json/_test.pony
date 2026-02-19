@@ -207,10 +207,10 @@ class \nodoc\ iso _ParsePrintRoundtripProperty is Property1[String]
     // compact(parse(s)) is a fixpoint after one cycle
     let first_parse = JsonParser.parse(sample)
     match first_parse
-    | let j1: JsonType =>
+    | let j1: JsonValue =>
       let s1: String val = _JsonPrint.compact(j1)
       match JsonParser.parse(s1)
-      | let j2: JsonType =>
+      | let j2: JsonValue =>
         let s2: String val = _JsonPrint.compact(j2)
         ph.assert_eq[String val](s1, s2)
       | let e: JsonParseError =>
@@ -231,7 +231,7 @@ class \nodoc\ iso _I64RoundtripProperty is Property1[I64]
   fun ref property(sample: I64, ph: PropertyHelper) =>
     let s: String val = sample.string()
     match JsonParser.parse(s)
-    | let j: JsonType =>
+    | let j: JsonValue =>
       try
         let parsed = j as I64
         ph.assert_eq[I64](sample, parsed)
@@ -265,7 +265,7 @@ class \nodoc\ iso _F64RoundtripProperty is Property1[F64]
     let arr = JsonArray.push(sample)
     let s: String val = _JsonPrint.compact(arr)
     match JsonParser.parse(s)
-    | let j: JsonType =>
+    | let j: JsonValue =>
       try
         let parsed_arr = j as JsonArray
         let parsed = parsed_arr(0)? as F64
@@ -288,7 +288,7 @@ class \nodoc\ iso _StringEscapeRoundtripProperty is Property1[String]
     let arr = JsonArray.push(sample)
     let serialized: String val = _JsonPrint.compact(arr)
     match JsonParser.parse(serialized)
-    | let j: JsonType =>
+    | let j: JsonValue =>
       try
         let parsed_arr = j as JsonArray
         let recovered = parsed_arr(0)? as String
@@ -413,7 +413,7 @@ class \nodoc\ iso _JsonPathSafetyProperty is Property1[String]
   fun ref property(sample: String, ph: PropertyHelper) =>
     // Parse the generated JSON
     match JsonParser.parse(sample)
-    | let doc: JsonType =>
+    | let doc: JsonValue =>
       // A set of valid paths — none should crash
       let paths: Array[String] val = [
         "$"
@@ -467,17 +467,17 @@ class \nodoc\ iso _TestParseKeywords is UnitTest
 
   fun apply(h: TestHelper) ? =>
     match JsonParser.parse("true")
-    | let j: JsonType => h.assert_eq[Bool](true, j as Bool)
+    | let j: JsonValue => h.assert_eq[Bool](true, j as Bool)
     else h.fail("true failed to parse")
     end
 
     match JsonParser.parse("false")
-    | let j: JsonType => h.assert_eq[Bool](false, j as Bool)
+    | let j: JsonValue => h.assert_eq[Bool](false, j as Bool)
     else h.fail("false failed to parse")
     end
 
     match JsonParser.parse("null")
-    | let j: JsonType =>
+    | let j: JsonValue =>
       match j
       | JsonNull => None // pass
       else h.fail("null parsed as wrong type")
@@ -491,44 +491,44 @@ class \nodoc\ iso _TestParseNumbers is UnitTest
   fun apply(h: TestHelper) ? =>
     // Integers
     match JsonParser.parse("0")
-    | let j: JsonType => h.assert_eq[I64](0, j as I64)
+    | let j: JsonValue => h.assert_eq[I64](0, j as I64)
     else h.fail("0 failed")
     end
 
     match JsonParser.parse("42")
-    | let j: JsonType => h.assert_eq[I64](42, j as I64)
+    | let j: JsonValue => h.assert_eq[I64](42, j as I64)
     else h.fail("42 failed")
     end
 
     match JsonParser.parse("-1")
-    | let j: JsonType => h.assert_eq[I64](-1, j as I64)
+    | let j: JsonValue => h.assert_eq[I64](-1, j as I64)
     else h.fail("-1 failed")
     end
 
     // Floats
     match JsonParser.parse("3.14")
-    | let j: JsonType =>
+    | let j: JsonValue =>
       let f = j as F64
       h.assert_true((f - 3.14).abs() < 1e-10)
     else h.fail("3.14 failed")
     end
 
     match JsonParser.parse("1e10")
-    | let j: JsonType =>
+    | let j: JsonValue =>
       let f = j as F64
       h.assert_true((f - 1e10).abs() < 1.0)
     else h.fail("1e10 failed")
     end
 
     match JsonParser.parse("1.5e-3")
-    | let j: JsonType =>
+    | let j: JsonValue =>
       let f = j as F64
       h.assert_true((f - 0.0015).abs() < 1e-10)
     else h.fail("1.5e-3 failed")
     end
 
     match JsonParser.parse("-0.5")
-    | let j: JsonType =>
+    | let j: JsonValue =>
       let f = j as F64
       h.assert_true((f - (-0.5)).abs() < 1e-10)
     else h.fail("-0.5 failed")
@@ -536,7 +536,7 @@ class \nodoc\ iso _TestParseNumbers is UnitTest
 
     // Large integer promoted to F64 instead of overflowing
     match JsonParser.parse("99999999999999999999")
-    | let j: JsonType =>
+    | let j: JsonValue =>
       let f = j as F64
       h.assert_true(f > 9.99e18)
     else h.fail("large integer failed")
@@ -544,13 +544,13 @@ class \nodoc\ iso _TestParseNumbers is UnitTest
 
     // Zero alone is valid
     match JsonParser.parse("0")
-    | let j: JsonType => h.assert_eq[I64](0, j as I64)
+    | let j: JsonValue => h.assert_eq[I64](0, j as I64)
     else h.fail("standalone 0 failed")
     end
 
     // 0.5 is valid (zero before decimal)
     match JsonParser.parse("0.5")
-    | let j: JsonType =>
+    | let j: JsonValue =>
       let f = j as F64
       h.assert_true((f - 0.5).abs() < 1e-10)
     else h.fail("0.5 failed")
@@ -562,13 +562,13 @@ class \nodoc\ iso _TestParseStrings is UnitTest
   fun apply(h: TestHelper) ? =>
     // Simple string
     match JsonParser.parse("\"hello\"")
-    | let j: JsonType => h.assert_eq[String]("hello", j as String)
+    | let j: JsonValue => h.assert_eq[String]("hello", j as String)
     else h.fail("simple string failed")
     end
 
     // All basic escape sequences
     match JsonParser.parse("\"a\\nb\\tc\\\"d\\\\e\\/f\"")
-    | let j: JsonType =>
+    | let j: JsonValue =>
       let s = j as String
       h.assert_eq[String]("a\nb\tc\"d\\e/f", s)
     else h.fail("escape sequences failed")
@@ -576,7 +576,7 @@ class \nodoc\ iso _TestParseStrings is UnitTest
 
     // \b and \f
     match JsonParser.parse("\"\\b\\f\"")
-    | let j: JsonType =>
+    | let j: JsonValue =>
       let s = j as String
       h.assert_eq[U8](0x08, try s(0)? else 0 end)
       h.assert_eq[U8](0x0C, try s(1)? else 0 end)
@@ -585,14 +585,14 @@ class \nodoc\ iso _TestParseStrings is UnitTest
 
     // \r
     match JsonParser.parse("\"\\r\"")
-    | let j: JsonType =>
+    | let j: JsonValue =>
       h.assert_eq[String]("\r", j as String)
     else h.fail("\\r failed")
     end
 
     // Unicode BMP: \u00E9 = é
     match JsonParser.parse("\"\\u00E9\"")
-    | let j: JsonType =>
+    | let j: JsonValue =>
       let s = j as String
       let expected = recover val String.from_utf32(0xE9) end
       h.assert_eq[String](expected, s)
@@ -601,7 +601,7 @@ class \nodoc\ iso _TestParseStrings is UnitTest
 
     // Surrogate pair: \uD834\uDD1E = U+1D11E (musical symbol G clef)
     match JsonParser.parse("\"\\uD834\\uDD1E\"")
-    | let j: JsonType =>
+    | let j: JsonValue =>
       let s = j as String
       let expected = recover val String.from_utf32(0x1D11E) end
       h.assert_eq[String](expected, s)
@@ -610,7 +610,7 @@ class \nodoc\ iso _TestParseStrings is UnitTest
 
     // Control char via unicode escape: \u001F
     match JsonParser.parse("\"\\u001F\"")
-    | let j: JsonType =>
+    | let j: JsonValue =>
       let s = j as String
       h.assert_eq[USize](1, s.size())
       h.assert_eq[U8](0x1F, try s(0)? else 0 end)
@@ -623,7 +623,7 @@ class \nodoc\ iso _TestParseContainers is UnitTest
   fun apply(h: TestHelper) ? =>
     // Empty object
     match JsonParser.parse("{}")
-    | let j: JsonType =>
+    | let j: JsonValue =>
       let obj = j as JsonObject
       h.assert_eq[USize](0, obj.size())
     else h.fail("empty object failed")
@@ -631,7 +631,7 @@ class \nodoc\ iso _TestParseContainers is UnitTest
 
     // Empty array
     match JsonParser.parse("[]")
-    | let j: JsonType =>
+    | let j: JsonValue =>
       let arr = j as JsonArray
       h.assert_eq[USize](0, arr.size())
     else h.fail("empty array failed")
@@ -639,7 +639,7 @@ class \nodoc\ iso _TestParseContainers is UnitTest
 
     // Nested structure
     match JsonParser.parse("""{"a":{"b":[1,2]}}""")
-    | let j: JsonType =>
+    | let j: JsonValue =>
       let nav = JsonNav(j)
       h.assert_eq[I64](1, nav("a")("b")(USize(0)).as_i64()?)
       h.assert_eq[I64](2, nav("a")("b")(USize(1)).as_i64()?)
@@ -648,7 +648,7 @@ class \nodoc\ iso _TestParseContainers is UnitTest
 
     // Whitespace between tokens
     match JsonParser.parse("  { \"a\" :  1  ,  \"b\" :  2  }  ")
-    | let j: JsonType =>
+    | let j: JsonValue =>
       let obj = j as JsonObject
       h.assert_eq[USize](2, obj.size())
     else h.fail("whitespace handling failed")
@@ -663,7 +663,7 @@ class \nodoc\ iso _TestParseWholeDocument is UnitTest
       {"store":{"book":[{"title":"A","author":"X","price":10},{"title":"B","author":"Y","price":20}],"bicycle":{"color":"red","price":15}}}
       """
     match JsonParser.parse(src)
-    | let j: JsonType =>
+    | let j: JsonValue =>
       let nav = JsonNav(j)
       h.assert_eq[String]("A", nav("store")("book")(USize(0))("title").as_string()?)
       h.assert_eq[String]("Y", nav("store")("book")(USize(1))("author").as_string()?)
@@ -711,7 +711,7 @@ class \nodoc\ iso _TestParseErrors is UnitTest
   fun _assert_parse_error(h: TestHelper, input: String, label: String) =>
     match JsonParser.parse(input)
     | let _: JsonParseError => None // expected
-    | let _: JsonType => h.fail("Expected error for: " + label)
+    | let _: JsonValue => h.fail("Expected error for: " + label)
     end
 
 class \nodoc\ iso _TestParseErrorLoneSurrogates is UnitTest
@@ -730,7 +730,7 @@ class \nodoc\ iso _TestParseErrorLoneSurrogates is UnitTest
   fun _assert_parse_error(h: TestHelper, input: String, label: String) =>
     match JsonParser.parse(input)
     | let _: JsonParseError => None // expected
-    | let _: JsonType => h.fail("Expected error for: " + label)
+    | let _: JsonValue => h.fail("Expected error for: " + label)
     end
 
 // ===================================================================
@@ -969,7 +969,7 @@ class \nodoc\ iso _TestLensGet is UnitTest
 
     // Identity lens returns root
     match JsonLens.get(doc)
-    | let j: JsonType =>
+    | let j: JsonValue =>
       let obj = j as JsonObject
       h.assert_true(obj.contains("a"))
     else h.fail("Identity get failed")
@@ -978,7 +978,7 @@ class \nodoc\ iso _TestLensGet is UnitTest
     // Nested path
     let lens = JsonLens("a")("b")
     match lens.get(doc)
-    | let j: JsonType => h.assert_eq[I64](42, j as I64)
+    | let j: JsonValue => h.assert_eq[I64](42, j as I64)
     else h.fail("Nested get failed")
     end
 
@@ -1007,14 +1007,14 @@ class \nodoc\ iso _TestLensSet is UnitTest
 
     // Identity lens replaces root
     match JsonLens.set(doc, I64(99))
-    | let j: JsonType => h.assert_eq[I64](99, j as I64)
+    | let j: JsonValue => h.assert_eq[I64](99, j as I64)
     else h.fail("Identity set failed")
     end
 
     // Nested set
     let lens = JsonLens("a")("b")
     match lens.set(doc, I64(42))
-    | let j: JsonType =>
+    | let j: JsonValue =>
       let nav = JsonNav(j)
       h.assert_eq[I64](42, nav("a")("b").as_i64()?)
       // Sibling preserved
@@ -1045,7 +1045,7 @@ class \nodoc\ iso _TestLensRemove is UnitTest
     // Remove key
     let lens = JsonLens("a")("b")
     match lens.remove(doc)
-    | let j: JsonType =>
+    | let j: JsonValue =>
       let nav = JsonNav(j)
       h.assert_false(nav("a")("b").found())
       // Sibling preserved
@@ -1077,9 +1077,9 @@ class \nodoc\ iso _TestLensComposition is UnitTest
     let chained = JsonLens("a")("b")("c")
 
     match composed.get(doc)
-    | let j1: JsonType =>
+    | let j1: JsonValue =>
       match chained.get(doc)
-      | let j2: JsonType =>
+      | let j2: JsonValue =>
         h.assert_eq[I64](j1 as I64, j2 as I64)
       else h.fail("Chained get failed")
       end
@@ -1091,20 +1091,20 @@ class \nodoc\ iso _TestLensComposition is UnitTest
     let found = JsonLens("a")("b")("c")
     let fallback = missing.or_else(found)
     match fallback.get(doc)
-    | let j: JsonType => h.assert_eq[I64](99, j as I64)
+    | let j: JsonValue => h.assert_eq[I64](99, j as I64)
     else h.fail("or_else fallback failed")
     end
 
     // or_else uses first when it succeeds
     let first_wins = found.or_else(missing)
     match first_wins.get(doc)
-    | let j: JsonType => h.assert_eq[I64](99, j as I64)
+    | let j: JsonValue => h.assert_eq[I64](99, j as I64)
     else h.fail("or_else first-match failed")
     end
 
     // Composed set modifies deeply nested value
     match composed.set(doc, I64(0))
-    | let j: JsonType =>
+    | let j: JsonValue =>
       let nav = JsonNav(j)
       h.assert_eq[I64](0, nav("a")("b")("c").as_i64()?)
     else h.fail("Composed set failed")
@@ -1227,7 +1227,7 @@ class \nodoc\ iso _TestJsonPathQueryBasic is UnitTest
 
     // query_one returns first
     match p1.query_one(doc)
-    | let j: JsonType => h.assert_eq[I64](1, j as I64)
+    | let j: JsonValue => h.assert_eq[I64](1, j as I64)
     else h.fail("query_one should find $.a")
     end
 
@@ -1343,7 +1343,7 @@ class \nodoc\ iso _TestJsonPathQueryComplex is UnitTest
     // First book title
     let p3 = JsonPathParser.compile("$.store.book[0].title")?
     match p3.query_one(doc)
-    | let j: JsonType => h.assert_eq[String]("A", j as String)
+    | let j: JsonValue => h.assert_eq[String]("A", j as String)
     else h.fail("Should find first book title")
     end
 
@@ -1475,7 +1475,7 @@ class \nodoc\ iso _FilterSafetyProperty is Property1[String]
 
   fun ref property(sample: String, ph: PropertyHelper) =>
     match JsonParser.parse(sample)
-    | let doc: JsonType =>
+    | let doc: JsonValue =>
       let paths: Array[String] val = [
         "$[?@.a]"
         "$[?@.a == 1]"
@@ -1574,7 +1574,7 @@ class \nodoc\ iso _FunctionMatchImpliesSearchProperty
   fun ref property(sample: (String, String), ph: PropertyHelper) =>
     (let json_str, let pattern) = sample
     match JsonParser.parse(json_str)
-    | let doc: JsonType =>
+    | let doc: JsonValue =>
       let match_path: String val = "$[?match(@.v, '" + pattern + "')]"
       let search_path: String val = "$[?search(@.v, '" + pattern + "')]"
       match (JsonPathParser.parse(match_path),
@@ -1617,7 +1617,7 @@ class \nodoc\ iso _FunctionCountLengthEquivalenceProperty
     let wrapped: String val =
       "[{\"v\":[" + json1 + "]},{\"v\":[" + json2 + "]}]"
     match JsonParser.parse(wrapped)
-    | let doc: JsonType =>
+    | let doc: JsonValue =>
       match JsonPathParser.parse("$[?count(@.v[*]) == length(@.v)]")
       | let eq_p: JsonPath =>
         let eq_results = eq_p.query(doc)
@@ -1645,7 +1645,7 @@ class \nodoc\ iso _FunctionSafetyProperty
   fun ref property(sample: (String, String), ph: PropertyHelper) =>
     (let json_str, let pattern) = sample
     match JsonParser.parse(json_str)
-    | let doc: JsonType =>
+    | let doc: JsonValue =>
       let match_path: String val = "$[?match(@.v, '" + pattern + "')]"
       let search_path: String val = "$[?search(@.v, '" + pattern + "')]"
       let not_match: String val = "$[?!match(@.v, '" + pattern + "')]"

@@ -6,7 +6,7 @@ Before:
 
 ```pony
 match lens.get(doc)
-| let v: json.JsonType => // use v
+| let v: json.JsonValue => // use v
 | json.NotFound => // handle missing
 end
 ```
@@ -15,7 +15,7 @@ After:
 
 ```pony
 match lens.get(doc)
-| let v: json.JsonType => // use v
+| let v: json.JsonValue => // use v
 | json.JsonNotFound => // handle missing
 end
 ```

@@ -15,18 +15,18 @@ class val JsonObject is Stringable
   ```
   """
 
-  let _data: pc.Map[String, JsonType]
+  let _data: pc.Map[String, JsonValue]
 
   new val create(
-    data': pc.Map[String, JsonType] = pc.Map[String, JsonType])
+    data': pc.Map[String, JsonValue] = pc.Map[String, JsonValue])
   =>
     _data = data'
 
-  fun apply(key: String): JsonType ? =>
+  fun apply(key: String): JsonValue ? =>
     """Look up a value by key. Raises if key is not present."""
     _data(key)?
 
-  fun get_or_else(key: String, default: JsonType): JsonType =>
+  fun get_or_else(key: String, default: JsonValue): JsonValue =>
     """Look up a value by key, returning default if absent."""
     _data.get_or_else(key, default)
 
@@ -38,7 +38,7 @@ class val JsonObject is Stringable
     """Number of key-value pairs."""
     _data.size()
 
-  fun update(key: String, value: JsonType): JsonObject =>
+  fun update(key: String, value: JsonValue): JsonObject =>
     """Return a new object with the key set to value."""
     JsonObject(_data(key) = value)
 
@@ -46,15 +46,15 @@ class val JsonObject is Stringable
     """Return a new object without the given key. No-op if key is absent."""
     JsonObject(_data.sub(key))
 
-  fun keys(): pc.MapKeys[String, JsonType, col.HashEq[String]] =>
+  fun keys(): pc.MapKeys[String, JsonValue, col.HashEq[String]] =>
     """Iterate over keys."""
     _data.keys()
 
-  fun values(): pc.MapValues[String, JsonType, col.HashEq[String]] =>
+  fun values(): pc.MapValues[String, JsonValue, col.HashEq[String]] =>
     """Iterate over values."""
     _data.values()
 
-  fun pairs(): pc.MapPairs[String, JsonType, col.HashEq[String]] =>
+  fun pairs(): pc.MapPairs[String, JsonValue, col.HashEq[String]] =>
     """Iterate over (key, value) pairs."""
     _data.pairs()
 

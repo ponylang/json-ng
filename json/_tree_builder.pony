@@ -1,27 +1,27 @@
 use pc = "collections/persistent"
 
 class ref _ObjectInProgress
-  var map: pc.Map[String, JsonType]
+  var map: pc.Map[String, JsonValue]
   var pending_key: (String | None)
 
   new ref create() =>
-    map = pc.Map[String, JsonType]
+    map = pc.Map[String, JsonValue]
     pending_key = None
 
 class ref _ArrayInProgress
-  var vec: pc.Vec[JsonType]
+  var vec: pc.Vec[JsonValue]
 
   new ref create() =>
-    vec = pc.Vec[JsonType]
+    vec = pc.Vec[JsonValue]
 
 class ref _TreeBuilder is JsonTokenNotify
   """
-  Internal token consumer that assembles a JsonType tree from token events.
+  Internal token consumer that assembles a JsonValue tree from token events.
   Used by JsonParser to build the full parse result.
   """
 
   var _stack: Array[(_ObjectInProgress | _ArrayInProgress)]
-  var _result: (JsonType | None)
+  var _result: (JsonValue | None)
 
   new ref create() =>
     _stack = Array[(_ObjectInProgress | _ArrayInProgress)]
@@ -65,7 +65,7 @@ class ref _TreeBuilder is JsonTokenNotify
       end
     end
 
-  fun ref _add_value(value: JsonType) =>
+  fun ref _add_value(value: JsonValue) =>
     if _stack.size() == 0 then
       _result = value
     else
@@ -83,5 +83,5 @@ class ref _TreeBuilder is JsonTokenNotify
       end
     end
 
-  fun result(): (JsonType | None) =>
+  fun result(): (JsonValue | None) =>
     _result

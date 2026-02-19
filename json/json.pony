@@ -27,7 +27,7 @@ let doc = json.JsonObject
     .update("state", "OR"))
 ```
 
-Values in the `JsonType` union — `JsonObject`, `JsonArray`, `String`,
+Values in the `JsonValue` union — `JsonObject`, `JsonArray`, `String`,
 `I64`, `F64`, `Bool`, and `JsonNull` — can be stored in objects and
 arrays. JSON null is represented by `JsonNull` (a distinct primitive),
 not Pony's `None`.
@@ -38,7 +38,7 @@ not Pony's `None`.
 
 ```pony
 match json.JsonParser.parse(source)
-| let j: json.JsonType =>
+| let j: json.JsonValue =>
   // j is the parsed document (object, array, or scalar)
   match j
   | let obj: json.JsonObject =>
@@ -90,13 +90,13 @@ let host_lens = json.JsonLens("config")("database")("host")
 
 // Read
 match host_lens.get(doc)
-| let host: json.JsonType => env.out.print("Host: " + host.string())
+| let host: json.JsonValue => env.out.print("Host: " + host.string())
 | json.JsonNotFound => env.out.print("no host configured")
 end
 
 // Update — returns a new document with the value changed
 match host_lens.set(doc, "prod.example.com")
-| let updated: json.JsonType =>
+| let updated: json.JsonValue =>
   // updated is a new doc; original doc is unchanged
   None
 | json.JsonNotFound => env.out.print("path doesn't exist")
@@ -105,7 +105,7 @@ end
 // Remove a key
 let debug_lens = json.JsonLens("config")("debug")
 match debug_lens.remove(doc)
-| let updated: json.JsonType => None // debug key removed
+| let updated: json.JsonValue => None // debug key removed
 | json.JsonNotFound => None // path didn't exist
 end
 
@@ -129,7 +129,7 @@ number of documents:
 // Parse returns errors as data (consistent with JsonParser)
 match json.JsonPathParser.parse("$.store.book[*].author")
 | let path: json.JsonPath =>
-  let authors = path.query(doc) // Array[JsonType] val
+  let authors = path.query(doc) // Array[JsonValue] val
   for author in authors.values() do
     env.out.print(author.string())
   end
@@ -241,7 +241,7 @@ For most use cases, `JsonParser.parse()` is simpler and sufficient.
 
 use "collections/persistent"
 
-type JsonType is (JsonObject | JsonArray | String | I64 | F64 | Bool | JsonNull)
+type JsonValue is (JsonObject | JsonArray | String | I64 | F64 | Bool | JsonNull)
 
 primitive JsonNull is Stringable
   """
