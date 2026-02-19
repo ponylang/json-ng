@@ -101,3 +101,25 @@ Supported functions:
 
 Type system enforcement per RFC 9535: LogicalType functions (`match`, `search`) can only appear as standalone test expressions or negated with `!`. ValueType functions (`length`, `count`, `value`) can only appear in comparisons. Invalid usage produces a clear parse error.
 
+## Rename JsonType to JsonValue
+
+The `JsonType` type alias has been renamed to `JsonValue` for clarity — it names a value, not a type category.
+
+Before:
+
+```pony
+match JsonParser.parse(source)
+| let j: json.JsonType => // use j
+| let err: json.JsonParseError => // handle error
+end
+```
+
+After:
+
+```pony
+match JsonParser.parse(source)
+| let j: json.JsonValue => // use j
+| let err: json.JsonParseError => // handle error
+end
+```
+
