@@ -54,19 +54,19 @@ end
 
 `JsonNav` wraps a value for chained read-only access. If any step
 in the chain fails (missing key, out-of-bounds index, type mismatch),
-`NotFound` propagates silently through the rest of the chain — no
+`JsonNotFound` propagates silently through the rest of the chain — no
 partial failures or exceptions:
 
 ```pony
 let nav = json.JsonNav(doc)
 
-// Chained access — returns the value or NotFound
+// Chained access — returns the value or JsonNotFound
 try
   let city = nav("address")("city").as_string()?
   env.out.print("City: " + city)
 end
 
-// NotFound propagates — no crash, just NotFound at the end
+// JsonNotFound propagates — no crash, just JsonNotFound at the end
 let missing = nav("nonexistent")("deep")("path")
 if not missing.found() then
   env.out.print("Path not found")
@@ -75,7 +75,7 @@ end
 
 Terminal extractors — `as_string()`, `as_i64()`, `as_f64()`,
 `as_bool()`, `as_null()`, `as_object()`, `as_array()` — unwrap the
-value or raise if the type doesn't match or the nav holds NotFound.
+value or raise if the type doesn't match or the nav holds JsonNotFound.
 
 ## Composable Paths: JsonLens
 
@@ -91,7 +91,7 @@ let host_lens = json.JsonLens("config")("database")("host")
 // Read
 match host_lens.get(doc)
 | let host: json.JsonType => env.out.print("Host: " + host.string())
-| json.NotFound => env.out.print("no host configured")
+| json.JsonNotFound => env.out.print("no host configured")
 end
 
 // Update — returns a new document with the value changed
@@ -99,14 +99,14 @@ match host_lens.set(doc, "prod.example.com")
 | let updated: json.JsonType =>
   // updated is a new doc; original doc is unchanged
   None
-| json.NotFound => env.out.print("path doesn't exist")
+| json.JsonNotFound => env.out.print("path doesn't exist")
 end
 
 // Remove a key
 let debug_lens = json.JsonLens("config")("debug")
 match debug_lens.remove(doc)
 | let updated: json.JsonType => None // debug key removed
-| json.NotFound => None // path didn't exist
+| json.JsonNotFound => None // path didn't exist
 end
 
 // Compose two lenses
@@ -159,7 +159,7 @@ Supported JSONPath syntax:
 * `$[?@.type == $.default]` — absolute query (`$`) in filters
 * `$[?match(@.name, "[A-Z].*")]` — function extensions (`length`, `count`,
   `match`, `search`, `value`)
-* `query_one()` — convenience returning first match or `NotFound`
+* `query_one()` — convenience returning first match or `JsonNotFound`
 
 ## Serialization
 
@@ -190,7 +190,7 @@ env.out.print(obj.pretty_string("\t"))
 ## Choosing an Access Pattern
 
 * **`JsonNav`** — one-shot chained access. Read-only. Best for
-  "grab this one value." Wraps a specific document; NotFound propagates
+  "grab this one value." Wraps a specific document; JsonNotFound propagates
   through chains.
 
 * **`JsonLens`** — reusable path with get/set/remove. Best for

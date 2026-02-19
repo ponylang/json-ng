@@ -22,7 +22,7 @@ class val JsonPath
   `search`, `value`) per RFC 9535 Section 2.4.
 
   For simple single-value extraction, `query_one()` returns the first
-  match or NotFound.
+  match or JsonNotFound.
   """
 
   let _segments: Array[_Segment] val
@@ -39,18 +39,18 @@ class val JsonPath
     """
     _JsonPathEval(root, root, _segments)
 
-  fun query_one(root: JsonType): (JsonType | NotFound) =>
+  fun query_one(root: JsonType): (JsonType | JsonNotFound) =>
     """
     Execute this query and return the first matching value, or
-    NotFound if no values match.
+    JsonNotFound if no values match.
 
     Convenience for paths known to select at most one value.
     """
     let results = query(root)
     if results.size() > 0 then
-      try results(0)? else NotFound end
+      try results(0)? else JsonNotFound end
     else
-      NotFound
+      JsonNotFound
     end
 
 
