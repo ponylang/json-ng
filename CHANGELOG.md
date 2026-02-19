@@ -14,6 +14,7 @@ All notable changes to this project will be documented in this file. This projec
 
 ### Changed
 
+- Rename JsonType to JsonValue ([PR #15](https://github.com/ponylang/json-ng/pull/15))
 
 ## [0.1.0] - 2026-02-13
 
