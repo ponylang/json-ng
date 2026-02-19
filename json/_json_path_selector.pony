@@ -13,7 +13,7 @@ class val _NameSelector
   new val create(name': String) =>
     _name = name'
 
-  fun select(node: JsonType, out: Array[JsonType] ref) =>
+  fun select(node: JsonValue, out: Array[JsonValue] ref) =>
     match node
     | let obj: JsonObject =>
       try out.push(obj(_name)?) end
@@ -26,7 +26,7 @@ class val _IndexSelector
   new val create(index': I64) =>
     _index = index'
 
-  fun select(node: JsonType, out: Array[JsonType] ref) =>
+  fun select(node: JsonValue, out: Array[JsonValue] ref) =>
     match node
     | let arr: JsonArray =>
       let effective = if _index >= 0 then
@@ -45,7 +45,7 @@ class val _IndexSelector
 primitive _WildcardSelector
   """Select all children of an object or array."""
 
-  fun select(node: JsonType, out: Array[JsonType] ref) =>
+  fun select(node: JsonValue, out: Array[JsonValue] ref) =>
     match node
     | let obj: JsonObject =>
       for v in obj.values() do out.push(v) end
@@ -75,7 +75,7 @@ class val _SliceSelector
     _end = end'
     _step = step'
 
-  fun select(node: JsonType, out: Array[JsonType] ref) =>
+  fun select(node: JsonValue, out: Array[JsonValue] ref) =>
     match node
     | let arr: JsonArray =>
       let len = arr.size().i64()
@@ -136,7 +136,7 @@ class val _FilterSelector
   new val create(expr': _LogicalExpr) =>
     _expr = expr'
 
-  fun select(node: JsonType, root: JsonType, out: Array[JsonType] ref) =>
+  fun select(node: JsonValue, root: JsonValue, out: Array[JsonValue] ref) =>
     match node
     | let arr: JsonArray =>
       for v in arr.values() do

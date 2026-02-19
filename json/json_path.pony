@@ -30,7 +30,7 @@ class val JsonPath
   new val _create(segments': Array[_Segment] val) =>
     _segments = segments'
 
-  fun query(root: JsonType): Array[JsonType] val =>
+  fun query(root: JsonValue): Array[JsonValue] val =>
     """
     Execute this query against a JSON document.
 
@@ -39,7 +39,7 @@ class val JsonPath
     """
     _JsonPathEval(root, root, _segments)
 
-  fun query_one(root: JsonType): (JsonType | JsonNotFound) =>
+  fun query_one(root: JsonValue): (JsonValue | JsonNotFound) =>
     """
     Execute this query and return the first matching value, or
     JsonNotFound if no values match.

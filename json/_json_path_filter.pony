@@ -14,7 +14,7 @@ primitive _Nothing
   """
 
 // The result of evaluating a singular query: either a value or absence.
-type _QueryResult is (JsonType | _Nothing)
+type _QueryResult is (JsonValue | _Nothing)
 
 // --- Comparison operators ---
 

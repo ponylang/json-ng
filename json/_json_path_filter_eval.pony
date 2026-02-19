@@ -9,8 +9,8 @@ primitive _FilterEval
 
   fun apply(
     expr: _LogicalExpr,
-    current: JsonType,
-    root: JsonType)
+    current: JsonValue,
+    root: JsonValue)
     : Bool
   =>
     match expr
@@ -32,8 +32,8 @@ primitive _FilterEval
 
   fun _eval_existence(
     query: _FilterQuery,
-    current: JsonType,
-    root: JsonType)
+    current: JsonValue,
+    root: JsonValue)
     : Bool
   =>
     """True if the query selects at least one node."""
@@ -47,8 +47,8 @@ primitive _FilterEval
 
   fun _eval_singular(
     query: _SingularQuery,
-    current: JsonType,
-    root: JsonType)
+    current: JsonValue,
+    root: JsonValue)
     : _QueryResult
   =>
     """
@@ -65,7 +65,7 @@ primitive _FilterEval
     end
     for seg in segs.values() do
       match node
-      | let j: JsonType =>
+      | let j: JsonValue =>
         node = match seg
         | let ns: _SingularNameSegment =>
           match j
@@ -100,8 +100,8 @@ primitive _FilterEval
 
   fun _eval_match(
     expr: _MatchExpr,
-    current: JsonType,
-    root: JsonType)
+    current: JsonValue,
+    root: JsonValue)
     : Bool
   =>
     """
@@ -123,8 +123,8 @@ primitive _FilterEval
 
   fun _eval_search(
     expr: _SearchExpr,
-    current: JsonType,
-    root: JsonType)
+    current: JsonValue,
+    root: JsonValue)
     : Bool
   =>
     """
@@ -158,8 +158,8 @@ primitive _FilterCompare
     left: _Comparable,
     op: _ComparisonOp,
     right: _Comparable,
-    current: JsonType,
-    root: JsonType)
+    current: JsonValue,
+    root: JsonValue)
     : Bool
   =>
     let lval = _resolve(left, current, root)
@@ -175,8 +175,8 @@ primitive _FilterCompare
 
   fun _resolve(
     c: _Comparable,
-    current: JsonType,
-    root: JsonType)
+    current: JsonValue,
+    root: JsonValue)
     : _QueryResult
   =>
     """Resolve a comparable to a concrete value or Nothing."""
@@ -197,8 +197,8 @@ primitive _FilterCompare
 
   fun _eval_length(
     arg: _Comparable,
-    current: JsonType,
-    root: JsonType)
+    current: JsonValue,
+    root: JsonValue)
     : _QueryResult
   =>
     """
@@ -229,8 +229,8 @@ primitive _FilterCompare
 
   fun _eval_count(
     query: _FilterQuery,
-    current: JsonType,
-    root: JsonType)
+    current: JsonValue,
+    root: JsonValue)
     : _QueryResult
   =>
     """Evaluate count(): cardinality of the nodelist from a query."""
@@ -244,8 +244,8 @@ primitive _FilterCompare
 
   fun _eval_value(
     query: _FilterQuery,
-    current: JsonType,
-    root: JsonType)
+    current: JsonValue,
+    root: JsonValue)
     : _QueryResult
   =>
     """
@@ -345,8 +345,8 @@ primitive _FilterCompare
     end
     true
 
-  fun _deep_eq(a: JsonType, b: JsonType): Bool =>
-    """Recursive equality for JsonType values."""
+  fun _deep_eq(a: JsonValue, b: JsonValue): Bool =>
+    """Recursive equality for JsonValue values."""
     match (a, b)
     | (let x: I64, let y: I64) => x == y
     | (let x: F64, let y: F64) => x == y

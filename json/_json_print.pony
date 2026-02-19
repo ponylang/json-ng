@@ -1,11 +1,11 @@
 primitive _JsonPrint
-  """Private serialization helper. Handles all JsonType members."""
+  """Private serialization helper. Handles all JsonValue members."""
 
-  fun compact(value: JsonType): String iso^ =>
+  fun compact(value: JsonValue): String iso^ =>
     """Compact serialization of any JSON value."""
     _value(recover iso String(256) end, value, "", 0, false)
 
-  fun pretty(value: JsonType, indent: String = "  "): String iso^ =>
+  fun pretty(value: JsonValue, indent: String = "  "): String iso^ =>
     """Pretty-printed serialization of any JSON value."""
     _value(recover iso String(256) end, value, indent, 0, true)
 
@@ -27,7 +27,7 @@ primitive _JsonPrint
 
   fun _value(
     buf: String iso,
-    value: JsonType,
+    value: JsonValue,
     indent: String,
     level: USize,
     is_pretty: Bool)

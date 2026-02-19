@@ -4,7 +4,7 @@ primitive JsonParser
 
   ```pony
   match JsonParser.parse(source)
-  | let json: JsonType => // use json
+  | let json: JsonValue => // use json
   | let err: JsonParseError => env.err.print(err.string())
   end
   ```
@@ -13,7 +13,7 @@ primitive JsonParser
   logic, and an internal tree builder assembles the result.
   """
 
-  fun parse(source: String): (JsonType | JsonParseError) =>
+  fun parse(source: String): (JsonValue | JsonParseError) =>
     """Parse a complete JSON document from a string."""
     let builder = _TreeBuilder
     let tokenizer = JsonTokenParser(builder)
@@ -26,6 +26,6 @@ primitive JsonParser
         tokenizer.line())
     end
     match builder.result()
-    | let json: JsonType => json
+    | let json: JsonValue => json
     | None => JsonParseError("Empty input", 0, 1)
     end

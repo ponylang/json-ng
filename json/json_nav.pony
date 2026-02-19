@@ -2,7 +2,7 @@ class val JsonNav
   """
   Chained navigation wrapper for JSON values.
 
-  Wraps a JsonType and provides safe chained access where JsonNotFound propagates
+  Wraps a JsonValue and provides safe chained access where JsonNotFound propagates
   through the chain — no exceptions until you extract a typed terminal value.
 
   ```pony
@@ -14,13 +14,13 @@ class val JsonNav
   ```
   """
 
-  let _value: (JsonType | JsonNotFound)
+  let _value: (JsonValue | JsonNotFound)
 
-  new val create(value: JsonType) =>
+  new val create(value: JsonValue) =>
     """Wrap a JSON value for navigation."""
     _value = value
 
-  new val _from(value: (JsonType | JsonNotFound)) =>
+  new val _from(value: (JsonValue | JsonNotFound)) =>
     """Internal: wrap a value that may already be JsonNotFound."""
     _value = value
 
@@ -77,7 +77,7 @@ class val JsonNav
 
   // --- Inspection ---
 
-  fun json(): (JsonType | JsonNotFound) =>
+  fun json(): (JsonValue | JsonNotFound) =>
     """Get the raw value for pattern matching."""
     _value
 

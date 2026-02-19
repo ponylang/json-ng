@@ -15,12 +15,12 @@ class val JsonArray is Stringable
   ```
   """
 
-  let _data: pc.Vec[JsonType]
+  let _data: pc.Vec[JsonValue]
 
-  new val create(data': pc.Vec[JsonType] = pc.Vec[JsonType]) =>
+  new val create(data': pc.Vec[JsonValue] = pc.Vec[JsonValue]) =>
     _data = data'
 
-  fun apply(i: USize): JsonType ? =>
+  fun apply(i: USize): JsonValue ? =>
     """Look up a value by index. Raises if out of bounds."""
     _data(i)?
 
@@ -28,18 +28,18 @@ class val JsonArray is Stringable
     """Number of elements."""
     _data.size()
 
-  fun update(i: USize, value: JsonType): JsonArray ? =>
+  fun update(i: USize, value: JsonValue): JsonArray ? =>
     """
     Return a new array with element at index i replaced.
     Raises if out of bounds.
     """
     JsonArray(_data(i)? = value)
 
-  fun push(value: JsonType): JsonArray =>
+  fun push(value: JsonValue): JsonArray =>
     """Return a new array with value appended."""
     JsonArray(_data.push(value))
 
-  fun pop(): (JsonArray, JsonType) ? =>
+  fun pop(): (JsonArray, JsonValue) ? =>
     """
     Return (new array without last element, removed element).
     Raises if empty.
@@ -47,11 +47,11 @@ class val JsonArray is Stringable
     let last = _data(_data.size() - 1)?
     (JsonArray(_data.pop()?), last)
 
-  fun values(): pc.VecValues[JsonType] =>
+  fun values(): pc.VecValues[JsonValue] =>
     """Iterate over values."""
     _data.values()
 
-  fun pairs(): pc.VecPairs[JsonType] =>
+  fun pairs(): pc.VecPairs[JsonValue] =>
     """Iterate over (index, value) pairs."""
     _data.pairs()
 

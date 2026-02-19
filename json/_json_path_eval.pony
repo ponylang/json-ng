@@ -14,14 +14,14 @@ primitive _JsonPathEval
   """
 
   fun apply(
-    start: JsonType,
-    root: JsonType,
+    start: JsonValue,
+    root: JsonValue,
     segments: Array[_Segment] val)
-    : Array[JsonType] val
+    : Array[JsonValue] val
   =>
     """Execute segments against start, returning matching values."""
     recover val
-      var current: Array[JsonType] ref = Array[JsonType]
+      var current: Array[JsonValue] ref = Array[JsonValue]
       current.push(start)
 
       for segment in segments.values() do
@@ -33,9 +33,9 @@ primitive _JsonPathEval
 
   fun _apply_segment(
     segment: _Segment,
-    input: Array[JsonType] ref,
-    root: JsonType)
-    : Array[JsonType] ref
+    input: Array[JsonValue] ref,
+    root: JsonValue)
+    : Array[JsonValue] ref
   =>
     """Apply a segment to produce a new nodelist."""
     match segment
@@ -47,12 +47,12 @@ primitive _JsonPathEval
 
   fun _apply_child(
     selectors: Array[_Selector] val,
-    input: Array[JsonType] ref,
-    root: JsonType)
-    : Array[JsonType] ref
+    input: Array[JsonValue] ref,
+    root: JsonValue)
+    : Array[JsonValue] ref
   =>
     """Apply selectors to each node in the input list."""
-    let out = Array[JsonType]
+    let out = Array[JsonValue]
     for node in input.values() do
       _select_all(selectors, node, root, out)
     end
@@ -60,15 +60,15 @@ primitive _JsonPathEval
 
   fun _apply_descendant(
     selectors: Array[_Selector] val,
-    input: Array[JsonType] ref,
-    root: JsonType)
-    : Array[JsonType] ref
+    input: Array[JsonValue] ref,
+    root: JsonValue)
+    : Array[JsonValue] ref
   =>
     """
     For each input node, walk the entire subtree depth-first and
     apply selectors at every level.
     """
-    let out = Array[JsonType]
+    let out = Array[JsonValue]
     for node in input.values() do
       _descend(selectors, node, root, out)
     end
@@ -76,9 +76,9 @@ primitive _JsonPathEval
 
   fun _descend(
     selectors: Array[_Selector] val,
-    node: JsonType,
-    root: JsonType,
-    out: Array[JsonType] ref)
+    node: JsonValue,
+    root: JsonValue,
+    out: Array[JsonValue] ref)
   =>
     """Depth-first pre-order: apply selectors here, then recurse."""
     _select_all(selectors, node, root, out)
@@ -94,9 +94,9 @@ primitive _JsonPathEval
   // match arm without affecting other selectors' signatures.
   fun _select_all(
     selectors: Array[_Selector] val,
-    node: JsonType,
-    root: JsonType,
-    out: Array[JsonType] ref)
+    node: JsonValue,
+    root: JsonValue,
+    out: Array[JsonValue] ref)
   =>
     """Apply all selectors to a single node."""
     for selector in selectors.values() do
