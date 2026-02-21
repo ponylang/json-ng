@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file. This projec
 
 ### Changed
 
+- Replace JsonNull with None ([PR #18](https://github.com/ponylang/json-ng/pull/18))
 
 ## [0.2.0] - 2026-02-19
 
