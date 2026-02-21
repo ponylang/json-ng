@@ -46,7 +46,7 @@ primitive _JsonPrint
     | let b: Bool =>
       buf.append(if b then "true" else "false" end)
       consume buf
-    | JsonNull =>
+    | None =>
       buf.append("null")
       consume buf
     end

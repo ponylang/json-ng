@@ -479,7 +479,7 @@ class \nodoc\ iso _TestParseKeywords is UnitTest
     match JsonParser.parse("null")
     | let j: JsonValue =>
       match j
-      | JsonNull => None // pass
+      | None => None // pass
       else h.fail("null parsed as wrong type")
       end
     else h.fail("null failed to parse")
@@ -759,7 +759,7 @@ class \nodoc\ iso _TestPrintCompact is UnitTest
     let mixed = JsonArray
       .push(true)
       .push(false)
-      .push(JsonNull)
+      .push(None)
     let mixed_s: String val = mixed.string()
     h.assert_eq[String]("[true,false,null]", mixed_s)
 
@@ -876,7 +876,7 @@ class \nodoc\ iso _TestNavSuccess is UnitTest
       .update("age", I64(30))
       .update("score", F64(9.5))
       .update("active", true)
-      .update("data", JsonNull)
+      .update("data", None)
       .update("tags", JsonArray.push("a").push("b"))
       .update("meta", JsonObject.update("x", I64(1)))
 
@@ -1764,7 +1764,7 @@ class \nodoc\ iso _TestJsonPathFilterExistence is UnitTest
     // Existence with null values — null value still exists
     let doc2 = JsonObject
       .update("items", JsonArray
-        .push(JsonObject.update("a", JsonNull))
+        .push(JsonObject.update("a", None))
         .push(JsonObject.update("b", I64(1))))
     let p5 = JsonPathParser.compile("$.items[?@.a]")?
     let r5 = p5.query(doc2)
@@ -1891,7 +1891,7 @@ class \nodoc\ iso _TestJsonPathFilterNothing is UnitTest
     let doc = JsonArray
       .push(JsonObject.update("a", I64(1)))
       .push(JsonObject.update("b", I64(2)))
-      .push(JsonObject.update("a", JsonNull))
+      .push(JsonObject.update("a", None))
 
     // @.a == 1: only first (Nothing != 1, null != 1)
     let p1 = JsonPathParser.compile("$[?@.a == 1]")?
@@ -1916,7 +1916,7 @@ class \nodoc\ iso _TestJsonPathFilterTypes is UnitTest
       .push(JsonObject.update("v", I64(1)))
       .push(JsonObject.update("v", "1"))
       .push(JsonObject.update("v", true))
-      .push(JsonObject.update("v", JsonNull))
+      .push(JsonObject.update("v", None))
 
     // No type coercion: 1 != "1"
     let p1 = JsonPathParser.compile("$[?@.v == 1]")?
@@ -2198,7 +2198,7 @@ class \nodoc\ iso _TestJsonPathFilterFunctionLength is UnitTest
     let doc5 = JsonArray
       .push(JsonObject.update("v", I64(42)))
       .push(JsonObject.update("v", true))
-      .push(JsonObject.update("v", JsonNull))
+      .push(JsonObject.update("v", None))
       .push(JsonObject) // missing "v" → Nothing
     let p5 = JsonPathParser.compile("$[?length(@.v) > 0]")?
     let r5 = p5.query(doc5)

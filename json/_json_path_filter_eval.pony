@@ -185,7 +185,7 @@ primitive _FilterCompare
     | let n: I64 => n
     | let n: F64 => n
     | let b: Bool => b
-    | JsonNull => JsonNull
+    | None => None
     | let q: _RelSingularQuery =>
       _FilterEval._eval_singular(q, current, root)
     | let q: _AbsSingularQuery =>
@@ -284,7 +284,7 @@ primitive _FilterCompare
     | (let a: F64, let b: I64) => a == b.f64()
     | (let a: String, let b: String) => a == b
     | (let a: Bool, let b: Bool) => a == b
-    | (JsonNull, JsonNull) => true
+    | (None, None) => true
     | (let a: JsonArray, let b: JsonArray) => _array_eq(a, b)
     | (let a: JsonObject, let b: JsonObject) => _object_eq(a, b)
     else
@@ -354,7 +354,7 @@ primitive _FilterCompare
     | (let x: F64, let y: I64) => x == y.f64()
     | (let x: String, let y: String) => x == y
     | (let x: Bool, let y: Bool) => x == y
-    | (JsonNull, JsonNull) => true
+    | (None, None) => true
     | (let x: JsonArray, let y: JsonArray) => _array_eq(x, y)
     | (let x: JsonObject, let y: JsonObject) => _object_eq(x, y)
     else

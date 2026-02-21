@@ -8,8 +8,8 @@ primitive _Nothing
   """
   Represents the absence of a value from a singular query result.
 
-  Distinct from `JsonNull` (JSON null) per RFC 9535: a missing key yields
-  `_Nothing`, while a key mapped to `null` yields `JsonNull`. Two Nothings
+  Distinct from `None` (JSON null) per RFC 9535: a missing key yields
+  `_Nothing`, while a key mapped to `null` yields `None`. Two Nothings
   compare equal; Nothing compared to any value is false (except `!=`).
   """
 
@@ -68,7 +68,7 @@ type _SingularQuery is (_RelSingularQuery | _AbsSingularQuery)
 // Includes literal values, singular queries, and ValueType-returning
 // function expressions (length, count, value).
 
-type _LiteralValue is (String | I64 | F64 | Bool | JsonNull)
+type _LiteralValue is (String | I64 | F64 | Bool | None)
 
 type _Comparable is
   (_LiteralValue | _SingularQuery | _LengthExpr | _CountExpr | _ValueExpr)

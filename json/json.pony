@@ -28,9 +28,8 @@ let doc = json.JsonObject
 ```
 
 Values in the `JsonValue` union — `JsonObject`, `JsonArray`, `String`,
-`I64`, `F64`, `Bool`, and `JsonNull` — can be stored in objects and
-arrays. JSON null is represented by `JsonNull` (a distinct primitive),
-not Pony's `None`.
+`I64`, `F64`, `Bool`, and `None` — can be stored in objects and arrays.
+JSON null is Pony's `None`.
 
 ## Parsing JSON
 
@@ -241,14 +240,4 @@ For most use cases, `JsonParser.parse()` is simpler and sufficient.
 
 use "collections/persistent"
 
-type JsonValue is (JsonObject | JsonArray | String | I64 | F64 | Bool | JsonNull)
-
-primitive JsonNull is Stringable
-  """
-  JSON null value.
-
-  Distinct from Pony's None to avoid conflicts with persistent collections
-  that use None as a 'not found' sentinel.
-  """
-
-  fun string(): String iso^ => "null".clone()
+type JsonValue is (JsonObject | JsonArray | String | I64 | F64 | Bool | None)

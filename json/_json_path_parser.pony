@@ -502,7 +502,7 @@ class ref _JsonPathParser
       false
     elseif _looking_at_str("null") then
       _advance(4)
-      JsonNull
+      None
     else
       _parse_json_number()?
     end
