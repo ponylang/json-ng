@@ -17,7 +17,7 @@ make clean              # clean build artifacts + corral cache
 **Current state**: All features compile and run. Comprehensive test suite with 20 property-based tests (PonyCheck) and 48 example-based tests.
 
 **What's implemented**:
-- Immutable JSON value types (`JsonObject`, `JsonArray`, `JsonNull`) backed by persistent collections (CHAMP Map, HAMT Vec)
+- Immutable JSON value types (`JsonObject`, `JsonArray`) backed by persistent collections (CHAMP Map, HAMT Vec)
 - Three access patterns: `JsonNav` (chained read-only), `JsonLens` (composable read/write/remove paths), `JsonPath` (RFC 9535 string-based queries)
 - Layered parser: `JsonTokenParser` (streaming tokens) → `JsonParser` (full tree)
 - Serialization: compact and pretty-printed output
@@ -31,24 +31,10 @@ make clean              # clean build artifacts + corral cache
 ### Core Types (`json/json.pony`)
 
 ```pony
-type JsonValue is (JsonObject | JsonArray | String | I64 | F64 | Bool | JsonNull)
+type JsonValue is (JsonObject | JsonArray | String | I64 | F64 | Bool | None)
 ```
 
 All JSON values are `val`. Construction is via chained method calls that return new values with structural sharing.
-
-### Why `JsonNull` instead of `None`
-
-Pony's persistent `HashMap` uses `None` as an internal "key not found" sentinel (in `_MapSubNodes.apply`). When `V` includes `None` (as it would if `JsonValue` used `None` for JSON null), the HAMT can't distinguish "key not found" from "value is null":
-
-- `HashMap.apply` returns `None` instead of raising for missing keys
-- `HashMap.contains` returns `false` for keys that map to `None`
-- `HashMap.get_or_else` returns `None` instead of the alt value for missing keys
-
-We use `JsonNull` (a distinct primitive) so that `None` never appears as a stored value in the persistent Map.
-
-**Related issue**: https://github.com/ponylang/ponyc/issues/4833
-
-With `JsonNull`, Pony's `None` serves its natural role: "no result yet" in `_TreeBuilder` and "delete this path" in lens `remove` operations.
 
 ### File Layout
 
@@ -56,7 +42,7 @@ With `JsonNull`, Pony's `None` serves its natural role: "no result yet" in `_Tre
 
 | File | Contents |
 |------|----------|
-| `json.pony` | Package docstring, `JsonValue` union, `JsonNull` |
+| `json.pony` | Package docstring, `JsonValue` union |
 | `json_object.pony` | `JsonObject` — immutable object backed by `pc.Map` |
 | `json_array.pony` | `JsonArray` — immutable array backed by `pc.Vec` |
 | `json_nav.pony` | `JsonNav` — chained read-only navigation |
@@ -74,9 +60,9 @@ With `JsonNull`, Pony's `None` serves its natural role: "no result yet" in `_Tre
 | File | Contents |
 |------|----------|
 | `_test.pony` | Test suite (20 property + 48 example tests) |
-| `_tree_builder.pony` | Assembles token events into `JsonValue` tree |
+| `_tree_builder.pony` | Assembles token events into `JsonValue` tree; `_NoResult` sentinel |
 | `_json_print.pony` | Serialization (compact + pretty) |
-| `_traversal.pony` | Lens traversal trait and implementations |
+| `_traversal.pony` | Lens traversal trait and implementations; `_Delete` sentinel |
 | `_json_path_parser.pony` | Recursive descent JSONPath parser |
 | `_json_path_selector.pony` | `_NameSelector`, `_IndexSelector`, `_WildcardSelector`, `_SliceSelector`, `_FilterSelector` |
 | `_json_path_segment.pony` | `_ChildSegment`, `_DescendantSegment` |

@@ -63,9 +63,9 @@ class val JsonNav
     """Extract as Bool. Raises if not a boolean or JsonNotFound."""
     _value as Bool
 
-  fun as_null(): JsonNull ? =>
-    """Extract as JsonNull (JSON null). Raises if not null or JsonNotFound."""
-    _value as JsonNull
+  fun as_null(): None ? =>
+    """Extract as None (JSON null). Raises if not null or JsonNotFound."""
+    _value as None
 
   fun as_object(): JsonObject ? =>
     """Extract as JsonObject. Raises if not an object or JsonNotFound."""

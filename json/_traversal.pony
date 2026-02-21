@@ -1,3 +1,5 @@
+primitive _Delete
+
 trait val _JsonTraversal
   """
   Internal trait for lens traversal operations.
@@ -6,14 +8,14 @@ trait val _JsonTraversal
   update: write or delete a value at the focus point, returning a new root.
   """
   fun apply(v: JsonValue): (JsonValue | JsonNotFound)
-  fun update(input: JsonValue, value: (JsonValue | None)): (JsonValue | JsonNotFound)
+  fun update(input: JsonValue, value: (JsonValue | _Delete)): (JsonValue | JsonNotFound)
   fun val compose(t: _JsonTraversal): _JsonTraversal => _TravCompose(this, t)
   fun val or_else(alt: _JsonTraversal): _JsonTraversal => _TravChoice(this, alt)
 
 primitive _NoTraversal is _JsonTraversal
   """Identity traversal — returns the input unchanged."""
   fun apply(v: JsonValue): (JsonValue | JsonNotFound) => v
-  fun update(input: JsonValue, value: (JsonValue | None)): (JsonValue | JsonNotFound) =>
+  fun update(input: JsonValue, value: (JsonValue | _Delete)): (JsonValue | JsonNotFound) =>
     match value
     | let j: JsonValue => j
     else JsonNotFound
@@ -30,12 +32,12 @@ class val _TravObjKey is _JsonTraversal
     else JsonNotFound
     end
 
-  fun update(input: JsonValue, value: (JsonValue | None)): (JsonValue | JsonNotFound) =>
+  fun update(input: JsonValue, value: (JsonValue | _Delete)): (JsonValue | JsonNotFound) =>
     try
       let obj = input as JsonObject
       match value
       | let j: JsonValue => obj.update(_key, j)
-      | None => obj.remove(_key)
+      | _Delete => obj.remove(_key)
       end
     else
       JsonNotFound
@@ -52,13 +54,13 @@ class val _TravArrayIndex is _JsonTraversal
     else JsonNotFound
     end
 
-  fun update(input: JsonValue, value: (JsonValue | None)): (JsonValue | JsonNotFound) =>
+  fun update(input: JsonValue, value: (JsonValue | _Delete)): (JsonValue | JsonNotFound) =>
     try
       let arr = input as JsonArray
       match value
       | let j: JsonValue => arr.update(_idx, j)?
       else
-        // None (remove) on array index — not supported, return JsonNotFound
+        // _Delete (remove) on array index — not supported, return JsonNotFound
         JsonNotFound
       end
     else
@@ -80,7 +82,7 @@ class val _TravCompose is _JsonTraversal
     else JsonNotFound
     end
 
-  fun update(input: JsonValue, value: (JsonValue | None)): (JsonValue | JsonNotFound) =>
+  fun update(input: JsonValue, value: (JsonValue | _Delete)): (JsonValue | JsonNotFound) =>
     try
       let intermediate = _a(input) as JsonValue
       let inner_result = _b.update(intermediate, value) as JsonValue
@@ -104,7 +106,7 @@ class val _TravChoice is _JsonTraversal
     else _b(v)
     end
 
-  fun update(input: JsonValue, value: (JsonValue | None)): (JsonValue | JsonNotFound) =>
+  fun update(input: JsonValue, value: (JsonValue | _Delete)): (JsonValue | JsonNotFound) =>
     match _a(input)
     | let _: JsonValue => _a.update(input, value)
     else _b.update(input, value)

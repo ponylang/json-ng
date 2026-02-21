@@ -1,5 +1,7 @@
 use pc = "collections/persistent"
 
+primitive _NoResult
+
 class ref _ObjectInProgress
   var map: pc.Map[String, JsonValue]
   var pending_key: (String | None)
@@ -21,11 +23,11 @@ class ref _TreeBuilder is JsonTokenNotify
   """
 
   var _stack: Array[(_ObjectInProgress | _ArrayInProgress)]
-  var _result: (JsonValue | None)
+  var _result: (JsonValue | _NoResult)
 
   new ref create() =>
     _stack = Array[(_ObjectInProgress | _ArrayInProgress)]
-    _result = None
+    _result = _NoResult
 
   fun ref apply(parser: JsonTokenParser, token: JsonToken) =>
     match token
@@ -52,7 +54,7 @@ class ref _TreeBuilder is JsonTokenNotify
     | JsonTokenFalse =>
       _add_value(false)
     | JsonTokenNull =>
-      _add_value(JsonNull)
+      _add_value(None)
     | JsonTokenObjectEnd =>
       try
         let obj = _stack.pop()? as _ObjectInProgress
@@ -83,5 +85,5 @@ class ref _TreeBuilder is JsonTokenNotify
       end
     end
 
-  fun result(): (JsonValue | None) =>
+  fun result(): (JsonValue | _NoResult) =>
     _result

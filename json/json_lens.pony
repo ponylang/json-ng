@@ -54,7 +54,7 @@ class val JsonLens
     Apply this lens to remove a value, returning a new root.
     Returns JsonNotFound if the path doesn't exist.
     """
-    _traversal.update(input, None)
+    _traversal.update(input, _Delete)
 
   fun compose(other: JsonLens): JsonLens =>
     """Sequential composition: navigate this lens, then the other."""

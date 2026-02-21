@@ -27,5 +27,5 @@ primitive JsonParser
     end
     match builder.result()
     | let json: JsonValue => json
-    | None => JsonParseError("Empty input", 0, 1)
+    | _NoResult => JsonParseError("Empty input", 0, 1)
     end
