@@ -9,7 +9,7 @@ json-ng was created with the intent to get it included in the Pony standard libr
 ## Installation
 
 * Install [corral](https://github.com/ponylang/corral)
-* `corral add github.com/ponylang/json-ng.git --version 0.2.0`
+* `corral add github.com/ponylang/json-ng.git --version 0.3.0`
 * `corral fetch` to fetch your dependencies
 * `use "json"` to include this package
 * `corral run -- ponyc` to compile your application
