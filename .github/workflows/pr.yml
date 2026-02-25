@@ -59,4 +59,4 @@ jobs:
       - name: Test
         run: |
           $env:PATH = 'C:\ponyc\bin;C:\corral\bin;' + $env:PATH
-          .\make.ps1 -Command test -Config Debug
+          .\make.ps1 -Command test -Config Release
