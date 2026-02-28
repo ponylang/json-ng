@@ -35,11 +35,11 @@ jobs:
         with:
           args: changelog-tool verify
 
-  vs-ponyc-nightly:
-    name: Test against recent ponyc nightly
+  vs-ponyc-release:
+    name: Test against recent ponyc release
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/ponylang/shared-docker-ci-standard-builder:nightly
+      image: ghcr.io/ponylang/shared-docker-ci-standard-builder:release
     steps:
       - uses: actions/checkout@v4.1.1
       - name: Test
