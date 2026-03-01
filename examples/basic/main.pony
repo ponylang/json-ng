@@ -57,7 +57,7 @@ actor Main
       {"users":[{"name":"Bob","age":25},{"name":"Carol","age":35}],"count":2}
       """
 
-    match json.JsonParser.parse(source)
+    match \exhaustive\ json.JsonParser.parse(source)
     | let j: json.JsonValue =>
       env.out.print("Parsed successfully")
       match j
@@ -74,7 +74,7 @@ actor Main
       {"users":[{"name":"Bob","age":25},{"name":"Carol","age":35}],"count":2}
       """
 
-    match json.JsonParser.parse(source)
+    match \exhaustive\ json.JsonParser.parse(source)
     | let j: json.JsonValue =>
       let nav = json.JsonNav(j)
       try
@@ -105,11 +105,11 @@ actor Main
       {"config":{"database":{"host":"localhost","port":5432},"debug":false}}
       """
 
-    match json.JsonParser.parse(source)
+    match \exhaustive\ json.JsonParser.parse(source)
     | let j: json.JsonValue =>
       // Read via lens
       let host_lens = json.JsonLens("config")("database")("host")
-      match host_lens.get(j)
+      match \exhaustive\ host_lens.get(j)
       | let host: json.JsonValue =>
         env.out.print("Host: " + host.string())
       | json.JsonNotFound =>
@@ -119,7 +119,7 @@ actor Main
       // Composed lens
       let db_lens = json.JsonLens("config")("database")
       let port_lens = db_lens.compose(json.JsonLens("port"))
-      match port_lens.get(j)
+      match \exhaustive\ port_lens.get(j)
       | let port: json.JsonValue =>
         env.out.print("Port: " + port.string())
       | json.JsonNotFound =>
@@ -136,11 +136,11 @@ actor Main
       {"config":{"database":{"host":"localhost","port":5432},"debug":false}}
       """
 
-    match json.JsonParser.parse(source)
+    match \exhaustive\ json.JsonParser.parse(source)
     | let j: json.JsonValue =>
       // Modify a deeply nested value
       let host_lens = json.JsonLens("config")("database")("host")
-      match host_lens.set(j, "prod.example.com")
+      match \exhaustive\ host_lens.set(j, "prod.example.com")
       | let updated: json.JsonValue =>
         match updated
         | let obj: json.JsonObject =>
@@ -153,7 +153,7 @@ actor Main
 
       // Remove a value
       let debug_lens = json.JsonLens("config")("debug")
-      match debug_lens.remove(j)
+      match \exhaustive\ debug_lens.remove(j)
       | let updated: json.JsonValue =>
         match updated
         | let obj: json.JsonObject =>
@@ -174,10 +174,10 @@ actor Main
       {"store":{"book":[{"title":"Sayings","author":"Rees","price":8.95},{"title":"Sword","author":"Waugh","price":12.99},{"title":"Moby Dick","author":"Melville","price":8.99}],"bicycle":{"color":"red","price":399}}}
       """
 
-    match json.JsonParser.parse(source)
+    match \exhaustive\ json.JsonParser.parse(source)
     | let doc: json.JsonValue =>
       // Wildcard: all authors
-      match json.JsonPathParser.parse("$.store.book[*].author")
+      match \exhaustive\ json.JsonPathParser.parse("$.store.book[*].author")
       | let path: json.JsonPath =>
         let authors = path.query(doc)
         env.out.print("Authors: " + _format_results(authors))
@@ -197,7 +197,7 @@ actor Main
       try
         let first_title =
           json.JsonPathParser.compile("$.store.book[0].title")?
-        match first_title.query_one(doc)
+        match \exhaustive\ first_title.query_one(doc)
         | let title: json.JsonValue =>
           env.out.print("First title: " + title.string())
         | json.JsonNotFound =>
@@ -247,7 +247,7 @@ actor Main
       {"store":{"book":[{"title":"Sayings","author":"Rees","price":8.95},{"title":"Sword","author":"Waugh","price":12.99},{"title":"Moby Dick","author":"Melville","price":8.99}],"bicycle":{"color":"red","price":399}}}
       """
 
-    match json.JsonParser.parse(source)
+    match \exhaustive\ json.JsonParser.parse(source)
     | let doc: json.JsonValue =>
       // Comparison filter: books under $10
       try
@@ -294,7 +294,7 @@ actor Main
       {"users":[{"name":"Alice","role":"admin","tags":["a","b"]},{"name":"Bob","role":"user","tags":["c"]},{"name":"Carol","role":"admin","tags":["d","e","f"]}]}
       """
 
-    match json.JsonParser.parse(source)
+    match \exhaustive\ json.JsonParser.parse(source)
     | let doc: json.JsonValue =>
       // match(): full-string I-Regexp match
       try

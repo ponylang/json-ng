@@ -206,10 +206,10 @@ class \nodoc\ iso _ParsePrintRoundtripProperty is Property1[String]
   fun ref property(sample: String, ph: PropertyHelper) =>
     // compact(parse(s)) is a fixpoint after one cycle
     let first_parse = JsonParser.parse(sample)
-    match first_parse
+    match \exhaustive\ first_parse
     | let j1: JsonValue =>
       let s1: String val = _JsonPrint.compact(j1)
-      match JsonParser.parse(s1)
+      match \exhaustive\ JsonParser.parse(s1)
       | let j2: JsonValue =>
         let s2: String val = _JsonPrint.compact(j2)
         ph.assert_eq[String val](s1, s2)
@@ -230,7 +230,7 @@ class \nodoc\ iso _I64RoundtripProperty is Property1[I64]
 
   fun ref property(sample: I64, ph: PropertyHelper) =>
     let s: String val = sample.string()
-    match JsonParser.parse(s)
+    match \exhaustive\ JsonParser.parse(s)
     | let j: JsonValue =>
       try
         let parsed = j as I64
@@ -264,7 +264,7 @@ class \nodoc\ iso _F64RoundtripProperty is Property1[F64]
     // Serialize as a JSON array element to handle the formatting
     let arr = JsonArray.push(sample)
     let s: String val = _JsonPrint.compact(arr)
-    match JsonParser.parse(s)
+    match \exhaustive\ JsonParser.parse(s)
     | let j: JsonValue =>
       try
         let parsed_arr = j as JsonArray
@@ -287,7 +287,7 @@ class \nodoc\ iso _StringEscapeRoundtripProperty is Property1[String]
     // Embed string in a JSON array, serialize, parse, extract
     let arr = JsonArray.push(sample)
     let serialized: String val = _JsonPrint.compact(arr)
-    match JsonParser.parse(serialized)
+    match \exhaustive\ JsonParser.parse(serialized)
     | let j: JsonValue =>
       try
         let parsed_arr = j as JsonArray
@@ -412,7 +412,7 @@ class \nodoc\ iso _JsonPathSafetyProperty is Property1[String]
 
   fun ref property(sample: String, ph: PropertyHelper) =>
     // Parse the generated JSON
-    match JsonParser.parse(sample)
+    match \exhaustive\ JsonParser.parse(sample)
     | let doc: JsonValue =>
       // A set of valid paths — none should crash
       let paths: Array[String] val = [
@@ -622,7 +622,7 @@ class \nodoc\ iso _TestParseContainers is UnitTest
 
   fun apply(h: TestHelper) ? =>
     // Empty object
-    match JsonParser.parse("{}")
+    match \exhaustive\ JsonParser.parse("{}")
     | let j: JsonValue =>
       let obj = j as JsonObject
       h.assert_eq[USize](0, obj.size())
@@ -662,7 +662,7 @@ class \nodoc\ iso _TestParseWholeDocument is UnitTest
       """
       {"store":{"book":[{"title":"A","author":"X","price":10},{"title":"B","author":"Y","price":20}],"bicycle":{"color":"red","price":15}}}
       """
-    match JsonParser.parse(src)
+    match \exhaustive\ JsonParser.parse(src)
     | let j: JsonValue =>
       let nav = JsonNav(j)
       h.assert_eq[String]("A", nav("store")("book")(USize(0))("title").as_string()?)
@@ -709,7 +709,7 @@ class \nodoc\ iso _TestParseErrors is UnitTest
     _assert_parse_error(h, ctrl, "raw control char")
 
   fun _assert_parse_error(h: TestHelper, input: String, label: String) =>
-    match JsonParser.parse(input)
+    match \exhaustive\ JsonParser.parse(input)
     | let _: JsonParseError => None // expected
     | let _: JsonValue => h.fail("Expected error for: " + label)
     end
@@ -728,7 +728,7 @@ class \nodoc\ iso _TestParseErrorLoneSurrogates is UnitTest
     _assert_parse_error(h, "\"\\uD800\\u0041\"", "high + non-surrogate")
 
   fun _assert_parse_error(h: TestHelper, input: String, label: String) =>
-    match JsonParser.parse(input)
+    match \exhaustive\ JsonParser.parse(input)
     | let _: JsonParseError => None // expected
     | let _: JsonValue => h.fail("Expected error for: " + label)
     end
@@ -984,14 +984,14 @@ class \nodoc\ iso _TestLensGet is UnitTest
 
     // Missing intermediate -> JsonNotFound
     let missing = JsonLens("x")("y")
-    match missing.get(doc)
+    match \exhaustive\ missing.get(doc)
     | JsonNotFound => None
     else h.fail("Expected JsonNotFound for missing path")
     end
 
     // Type mismatch -> JsonNotFound
     let mismatch = JsonLens("a")("b")("c")
-    match mismatch.get(doc)
+    match \exhaustive\ mismatch.get(doc)
     | JsonNotFound => None
     else h.fail("Expected JsonNotFound for type mismatch")
     end
@@ -1028,7 +1028,7 @@ class \nodoc\ iso _TestLensSet is UnitTest
 
     // Missing intermediate -> JsonNotFound
     let missing = JsonLens("x")("y")
-    match missing.set(doc, I64(1))
+    match \exhaustive\ missing.set(doc, I64(1))
     | JsonNotFound => None
     else h.fail("Expected JsonNotFound for missing intermediate")
     end
@@ -1056,7 +1056,7 @@ class \nodoc\ iso _TestLensRemove is UnitTest
     // Remove on array index -> JsonNotFound
     let arr_doc = JsonObject.update("arr", JsonArray.push(I64(1)))
     let arr_lens = JsonLens("arr")(USize(0))
-    match arr_lens.remove(arr_doc)
+    match \exhaustive\ arr_lens.remove(arr_doc)
     | JsonNotFound => None
     else h.fail("Expected JsonNotFound for array index remove")
     end
@@ -1097,7 +1097,7 @@ class \nodoc\ iso _TestLensComposition is UnitTest
 
     // or_else uses first when it succeeds
     let first_wins = found.or_else(missing)
-    match first_wins.get(doc)
+    match \exhaustive\ first_wins.get(doc)
     | let j: JsonValue => h.assert_eq[I64](99, j as I64)
     else h.fail("or_else first-match failed")
     end
@@ -1142,7 +1142,7 @@ class \nodoc\ iso _TestJsonPathParse is UnitTest
       "$[::0]"
     ]
     for path_str in valid.values() do
-      match JsonPathParser.parse(path_str)
+      match \exhaustive\ JsonPathParser.parse(path_str)
       | let _: JsonPath => None // pass
       | let e: JsonPathParseError =>
         h.fail("Expected valid: " + path_str + " — " + e.string())
@@ -1171,7 +1171,7 @@ class \nodoc\ iso _TestJsonPathParseErrors is UnitTest
       "$['open"  // unterminated string
     ]
     for path_str in invalid.values() do
-      match JsonPathParser.parse(path_str)
+      match \exhaustive\ JsonPathParser.parse(path_str)
       | let _: JsonPathParseError => None // expected
       | let _: JsonPath =>
         h.fail("Expected error for: " + path_str)
@@ -1232,7 +1232,7 @@ class \nodoc\ iso _TestJsonPathQueryBasic is UnitTest
     end
 
     // query_one returns JsonNotFound when empty
-    match p5.query_one(doc)
+    match \exhaustive\ p5.query_one(doc)
     | JsonNotFound => None
     else h.fail("query_one should return JsonNotFound for missing")
     end
@@ -1474,7 +1474,7 @@ class \nodoc\ iso _FilterSafetyProperty is Property1[String]
     _JsonValueStringGen(2)
 
   fun ref property(sample: String, ph: PropertyHelper) =>
-    match JsonParser.parse(sample)
+    match \exhaustive\ JsonParser.parse(sample)
     | let doc: JsonValue =>
       let paths: Array[String] val = [
         "$[?@.a]"
@@ -1573,7 +1573,7 @@ class \nodoc\ iso _FunctionMatchImpliesSearchProperty
 
   fun ref property(sample: (String, String), ph: PropertyHelper) =>
     (let json_str, let pattern) = sample
-    match JsonParser.parse(json_str)
+    match \exhaustive\ JsonParser.parse(json_str)
     | let doc: JsonValue =>
       let match_path: String val = "$[?match(@.v, '" + pattern + "')]"
       let search_path: String val = "$[?search(@.v, '" + pattern + "')]"
@@ -1616,7 +1616,7 @@ class \nodoc\ iso _FunctionCountLengthEquivalenceProperty
     // and must agree.
     let wrapped: String val =
       "[{\"v\":[" + json1 + "]},{\"v\":[" + json2 + "]}]"
-    match JsonParser.parse(wrapped)
+    match \exhaustive\ JsonParser.parse(wrapped)
     | let doc: JsonValue =>
       match JsonPathParser.parse("$[?count(@.v[*]) == length(@.v)]")
       | let eq_p: JsonPath =>
@@ -1644,7 +1644,7 @@ class \nodoc\ iso _FunctionSafetyProperty
 
   fun ref property(sample: (String, String), ph: PropertyHelper) =>
     (let json_str, let pattern) = sample
-    match JsonParser.parse(json_str)
+    match \exhaustive\ JsonParser.parse(json_str)
     | let doc: JsonValue =>
       let match_path: String val = "$[?match(@.v, '" + pattern + "')]"
       let search_path: String val = "$[?search(@.v, '" + pattern + "')]"
@@ -1662,7 +1662,7 @@ class \nodoc\ iso _FunctionSafetyProperty
         "$[?count(@.v[*]) == length(@.v)]"
       ]
       for path_str in paths.values() do
-        match JsonPathParser.parse(path_str)
+        match \exhaustive\ JsonPathParser.parse(path_str)
         | let path: JsonPath =>
           let results = path.query(doc)
           ph.assert_true(results.size() >= 0)
@@ -1708,7 +1708,7 @@ class \nodoc\ iso _TestJsonPathFilterParse is UnitTest
       """$[?"book" == @.type]"""
     ]
     for path_str in valid.values() do
-      match JsonPathParser.parse(path_str)
+      match \exhaustive\ JsonPathParser.parse(path_str)
       | let _: JsonPath => None // pass
       | let e: JsonPathParseError =>
         h.fail("Expected valid: " + path_str + " — " + e.string())
@@ -1722,7 +1722,7 @@ class \nodoc\ iso _TestJsonPathFilterParse is UnitTest
       "$[?@..a == 1]" // descendant in comparison (not singular)
     ]
     for path_str in invalid.values() do
-      match JsonPathParser.parse(path_str)
+      match \exhaustive\ JsonPathParser.parse(path_str)
       | let _: JsonPathParseError => None // expected
       | let _: JsonPath =>
         h.fail("Expected error for: " + path_str)
@@ -2051,7 +2051,7 @@ class \nodoc\ iso _TestJsonPathFilterFunctionParse is UnitTest
       "$[?count(@[*]) == length(@)]"
     ]
     for path_str in valid.values() do
-      match JsonPathParser.parse(path_str)
+      match \exhaustive\ JsonPathParser.parse(path_str)
       | let _: JsonPath => None
       | let e: JsonPathParseError =>
         h.fail("Expected valid: " + path_str + " — " + e.string())
@@ -2072,7 +2072,7 @@ class \nodoc\ iso _TestJsonPathFilterFunctionParse is UnitTest
       ("""$[?match(@.a, "x") == true]""", "match in comparison")
     ]
     for (path_str, label) in invalid.values() do
-      match JsonPathParser.parse(path_str)
+      match \exhaustive\ JsonPathParser.parse(path_str)
       | let _: JsonPathParseError => None
       | let _: JsonPath =>
         h.fail("Expected error for (" + label + "): " + path_str)
@@ -2388,7 +2388,7 @@ class \nodoc\ iso _IRegexpParserSafetyProperty is Property1[String]
 
   fun ref property(sample: String, ph: PropertyHelper) =>
     // parse() should always return a result, never crash
-    match _IRegexpCompiler.parse(sample)
+    match \exhaustive\ _IRegexpCompiler.parse(sample)
     | let _: _IRegexp => None
     | let _: _IRegexpParseError => None
     end
@@ -2403,7 +2403,7 @@ class \nodoc\ iso _IRegexpMatchSafetyProperty is Property1[(String, String)]
 
   fun ref property(sample: (String, String), ph: PropertyHelper) =>
     (let pattern, let input) = sample
-    match _IRegexpCompiler.parse(pattern)
+    match \exhaustive\ _IRegexpCompiler.parse(pattern)
     | let re: _IRegexp =>
       re.is_match(input)
       re.search(input)
@@ -2424,7 +2424,7 @@ class \nodoc\ iso _IRegexpIsMatchImpliesSearchProperty
 
   fun ref property(sample: (String, String), ph: PropertyHelper) =>
     (let pattern, let input) = sample
-    match _IRegexpCompiler.parse(pattern)
+    match \exhaustive\ _IRegexpCompiler.parse(pattern)
     | let re: _IRegexp =>
       if re.is_match(input) then
         ph.assert_true(re.search(input),
@@ -2453,7 +2453,7 @@ class \nodoc\ iso _IRegexpLiteralRoundtripProperty is Property1[String]
       buf.push(byte)
     end
     let pattern: String val = buf.clone()
-    match _IRegexpCompiler.parse(pattern)
+    match \exhaustive\ _IRegexpCompiler.parse(pattern)
     | let re: _IRegexp =>
       ph.assert_true(re.is_match(sample),
         "Escaped literal pattern should match original string")
@@ -2473,7 +2473,7 @@ class \nodoc\ iso _IRegexpSearchSubstringProperty
 
   fun ref property(sample: (String, String), ph: PropertyHelper) =>
     (let pattern, let input) = sample
-    match _IRegexpCompiler.parse(pattern)
+    match \exhaustive\ _IRegexpCompiler.parse(pattern)
     | let re: _IRegexp =>
       let regexp_found = re.search(input)
       let string_found = input.contains(pattern)
@@ -2504,7 +2504,7 @@ class \nodoc\ iso _TestIRegexpParse is UnitTest
       "" // empty pattern matches empty string
     ]
     for pattern in valid.values() do
-      match _IRegexpCompiler.parse(pattern)
+      match \exhaustive\ _IRegexpCompiler.parse(pattern)
       | let _: _IRegexp => None
       | let e: _IRegexpParseError =>
         h.fail("Expected valid: " + pattern + " — " + e.string())
@@ -2530,7 +2530,7 @@ class \nodoc\ iso _TestIRegexpParse is UnitTest
       "a{99999}" // quantifier value too large
     ]
     for pattern in invalid.values() do
-      match _IRegexpCompiler.parse(pattern)
+      match \exhaustive\ _IRegexpCompiler.parse(pattern)
       | let _: _IRegexpParseError => None
       | let _: _IRegexp =>
         h.fail("Expected error for: " + pattern)
@@ -2623,7 +2623,7 @@ class \nodoc\ iso _TestIRegexpIsMatch is UnitTest
     input: String,
     expected: Bool)
   =>
-    match _IRegexpCompiler.parse(pattern)
+    match \exhaustive\ _IRegexpCompiler.parse(pattern)
     | let re: _IRegexp =>
       h.assert_eq[Bool](expected, re.is_match(input),
         "Pattern '" + pattern + "' vs '" + input + "'")
@@ -2666,7 +2666,7 @@ class \nodoc\ iso _TestIRegexpSearch is UnitTest
     input: String,
     expected: Bool)
   =>
-    match _IRegexpCompiler.parse(pattern)
+    match \exhaustive\ _IRegexpCompiler.parse(pattern)
     | let re: _IRegexp =>
       h.assert_eq[Bool](expected, re.search(input),
         "Search '" + pattern + "' in '" + input + "'")
@@ -2719,7 +2719,7 @@ class \nodoc\ iso _TestIRegexpUnicode is UnitTest
     input: String,
     expected: Bool)
   =>
-    match _IRegexpCompiler.parse(pattern)
+    match \exhaustive\ _IRegexpCompiler.parse(pattern)
     | let re: _IRegexp =>
       h.assert_eq[Bool](expected, re.is_match(input),
         "Pattern '" + pattern + "' vs input")
@@ -2768,7 +2768,7 @@ class \nodoc\ iso _TestIRegexpEscapes is UnitTest
     input: String,
     expected: Bool)
   =>
-    match _IRegexpCompiler.parse(pattern)
+    match \exhaustive\ _IRegexpCompiler.parse(pattern)
     | let re: _IRegexp =>
       h.assert_eq[Bool](expected, re.is_match(input),
         "Pattern '" + pattern + "' vs input")
@@ -2838,7 +2838,7 @@ class \nodoc\ iso _TestIRegexpEdgeCases is UnitTest
     input: String,
     expected: Bool)
   =>
-    match _IRegexpCompiler.parse(pattern)
+    match \exhaustive\ _IRegexpCompiler.parse(pattern)
     | let re: _IRegexp =>
       h.assert_eq[Bool](expected, re.is_match(input),
         "Pattern '" + pattern + "' vs '" + input + "'")
