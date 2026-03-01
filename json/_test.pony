@@ -1561,8 +1561,8 @@ primitive \nodoc\ _SafeIRegexpGen
 class \nodoc\ iso _FunctionMatchImpliesSearchProperty
   is Property1[(String, String)]
   """
-  If match \exhaustive\(@.v, pattern) selects a node, search(@.v, pattern) must also
-  select it. Full-string match \exhaustive\ is a special case of substring search.
+  If match(@.v, pattern) selects a node, search(@.v, pattern) must also
+  select it. Full-string match is a special case of substring search.
   """
   fun name(): String => "json/jsonpath/filter/function/match-implies-search"
 
