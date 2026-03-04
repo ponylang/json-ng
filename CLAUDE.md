@@ -8,7 +8,7 @@ JSON library for Pony, exploring a design for potential stdlib inclusion.
 make                    # build tests + examples (release)
 make test               # same as above
 make config=debug       # debug build
-make build-examples     # examples only
+make examples     # examples only
 make clean              # clean build artifacts + corral cache
 ```
 
